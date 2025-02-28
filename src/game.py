@@ -90,7 +90,7 @@ class Game:
         
         # Chargement et préparation de l'image de terrain
         try:
-            self.speed_mask = pygame.image.load("src/assets/speedmask.png").convert_gray()
+            self.speed_mask = pygame.image.load("src/assets/speedmask.png").convert()
             # Mise à l'échelle si nécessaire pour correspondre à WORLD_SIZE
             if self.speed_mask.get_width() != WORLD_SIZE or self.speed_mask.get_height() != WORLD_SIZE:
                 self.speed_mask = pygame.transform.scale(self.speed_mask, (WORLD_SIZE, WORLD_SIZE))
