@@ -41,7 +41,8 @@ class WaveManager:
             Wave(
                 monsters=[
                     WaveMonster(MonsterType.MORAY, count=3, spawn_delay=2.0),
-                    WaveMonster(MonsterType.SMALL_SPIRIT, count=4, spawn_delay=1.5)
+                    WaveMonster(MonsterType.SMALL_SPIRIT, count=4, spawn_delay=1.5),
+                    WaveMonster(MonsterType.VARAN, count=1, spawn_delay=1.5)
                 ],
                 spawn_distance=MIN_SPAWN_DISTANCE + 100,
                 wave_delay=15.0
@@ -51,7 +52,8 @@ class WaveManager:
                 monsters=[
                     WaveMonster(MonsterType.FIRE_SKELETON, count=2, spawn_delay=3.0),
                     WaveMonster(MonsterType.WITCH, count=1, spawn_delay=0),
-                    WaveMonster(MonsterType.KAMIKAZE, count=3, spawn_delay=1.0)
+                    WaveMonster(MonsterType.KAMIKAZE, count=3, spawn_delay=1.0),
+                    WaveMonster(MonsterType.VARAN, count=1, spawn_delay=1.5)
                 ],
                 spawn_distance=MAX_SPAWN_DISTANCE - 100,
                 wave_delay=20.0

@@ -13,6 +13,7 @@ class MonsterType(Enum):
     SKELETON = auto()
     WOLF = auto()
     MORAY = auto()
+    VARAN = auto()
     SMALL_SPIRIT = auto()
     FIRE_SKELETON = auto()
     WITCH = auto()
@@ -27,6 +28,7 @@ MONSTER_NAMES = {
     MonsterType.SKELETON: "Squelette",
     MonsterType.WOLF: "Loup",
     MonsterType.MORAY: "Murène",
+    MonsterType.VARAN: "Varan",
     MonsterType.SMALL_SPIRIT: "Petit Esprit",
     MonsterType.FIRE_SKELETON: "Squelette de Feu",
     MonsterType.WITCH: "Sorcière",

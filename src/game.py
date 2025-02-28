@@ -485,6 +485,8 @@ class Game:
                     score_gain = 15
                 elif dead_monster.monster_type == MonsterType.MORAY:
                     score_gain = 20
+                elif dead_monster.monster_type == MonsterType.VARAN:
+                    score_gain = 25
                 elif dead_monster.monster_type == MonsterType.FIRE_SKELETON:
                     score_gain = 25
                 elif dead_monster.monster_type == MonsterType.SMALL_SPIRIT:
