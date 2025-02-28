@@ -94,6 +94,7 @@ class Game:
         self.show_help = False  # Nouvel attribut pour afficher l'aide
 
         self.background = pygame.image.load('src/assets/background.png').convert()
+        self.enemy_royal_moray = pygame.image.load('src/assets/royal_moray.png').convert_alpha()
         
         # Chargement et préparation de l'image de terrain
         try:
