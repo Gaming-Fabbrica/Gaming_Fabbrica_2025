@@ -99,6 +99,14 @@ class Game:
             GO_BUTTON_HEIGHT
         )
         
+        # Bouton RESET
+        self.reset_button_rect = pygame.Rect(
+            WINDOW_WIDTH - GO_BUTTON_WIDTH - 120,  # 110 pixels à gauche du bouton GO
+            WINDOW_HEIGHT - TOWER_PANEL_HEIGHT + (TOWER_PANEL_HEIGHT - GO_BUTTON_HEIGHT) // 2,
+            GO_BUTTON_WIDTH,
+            GO_BUTTON_HEIGHT
+        )
+        
         self.show_ranges = False
         self.wave_manager = None
         self.game_start_time = 0
@@ -119,7 +127,7 @@ class Game:
         self.light_recharge_timer = 0.0  # Compte le temps écoulé depuis que la lumière a été déchargée
         self.light_in_cooldown = False    # Indique si la lumière est en période de délai
         self.show_help = False  # Nouvel attribut pour afficher l'aide
-        self.show_grid = True  # Nouvel attribut pour afficher/masquer la grille
+        self.show_grid = False  # Nouvel attribut pour afficher/masquer la grille
 
         self.background = pygame.image.load('src/assets/background.png').convert()
 
@@ -296,6 +304,18 @@ class Game:
                         if self.all_towers_placed():
                             self.save_map()
                             self.start_game()
+                        return True
+                    
+                    # Vérifier si on clique sur le bouton RESET
+                    if self.game_mode == GameMode.EDIT and self.reset_button_rect.collidepoint(self.mouse_x, self.mouse_y):
+                        # Remettre les tours dans la barre du bas
+                        for tower in self.towers:
+                            for tower_info in self.available_towers:
+                                if tower_info['type'] == tower.tower_type:
+                                    tower_info['count'] += 1
+                        self.towers = []  # Vider la liste des tours placées
+                        self.selected_tower = None
+                        self.play_sound('tower_destroyed')  # Jouer un son pour le feedback
                         return True
                     
                     # Gestion des tours (uniquement en mode EDIT)
@@ -605,12 +625,6 @@ class Game:
                 pygame.draw.line(self.screen, GRAY, 
                                (int(start_pos[0]), int(start_pos[1])), 
                                (int(end_pos[0]), int(end_pos[1])))
-            for y in range(grid_start_y, grid_end_y + GRID_SIZE, GRID_SIZE):
-                start_pos = self.world_to_screen(grid_start_x, y)
-                end_pos = self.world_to_screen(grid_end_x, y)
-                pygame.draw.line(self.screen, GRAY, 
-                               (int(start_pos[0]), int(start_pos[1])), 
-                               (int(end_pos[0]), int(end_pos[1])))
         
         # Dessiner le village
         village_screen_x, village_screen_y = self.world_to_screen(self.village_x, self.village_y)
@@ -858,10 +872,12 @@ class Game:
             panel_x = 10
             for tower_info in self.available_towers:
                 if tower_info['count'] > 0:
-                    pygame.draw.circle(self.screen, tower_info['color'],
-                                     (panel_x + TOWER_SIZE//2, 
-                                      self.current_height - TOWER_PANEL_HEIGHT + TOWER_SIZE//2),
-                                     TOWER_SIZE//2)
+                    # Utiliser le sprite de la tour au lieu d'un cercle
+                    scaled_sprite = pygame.transform.scale(self.tower_sprites[tower_info['type']], 
+                                                        (TOWER_SIZE, TOWER_SIZE))
+                    self.screen.blit(scaled_sprite, 
+                                   (panel_x, 
+                                    self.current_height - TOWER_PANEL_HEIGHT + (TOWER_PANEL_HEIGHT - TOWER_SIZE) // 2))
                     count_text = str(tower_info['count'])
                     text_surface = pygame.font.Font(None, 24).render(count_text, True, WHITE)
                     self.screen.blit(text_surface, 
@@ -878,17 +894,27 @@ class Game:
             text_surface = font.render(button_text, True, text_color)
             text_rect = text_surface.get_rect(center=self.go_button_rect.center)
             self.screen.blit(text_surface, text_rect)
+            
+            # Dessiner le bouton RESET
+            pygame.draw.rect(self.screen, RED, self.reset_button_rect)
+            reset_text = "RESET"
+            reset_surface = font.render(reset_text, True, WHITE)
+            reset_rect = reset_surface.get_rect(center=self.reset_button_rect.center)
+            self.screen.blit(reset_surface, reset_rect)
         
         # Tour en cours de déplacement
         if self.dragged_tower:
-            color = BLUE if self.dragged_tower['type'] == TowerType.POWERFUL else \
-                   GREEN if self.dragged_tower['type'] == TowerType.MEDIUM else YELLOW
-            pygame.draw.circle(self.screen, color, 
-                             (self.mouse_x, self.mouse_y), TOWER_SIZE//2)
+            # Utiliser le sprite de la tour au lieu d'un cercle
+            scaled_sprite = pygame.transform.scale(self.tower_sprites[self.dragged_tower['type']], 
+                                                (TOWER_SIZE, TOWER_SIZE))
+            self.screen.blit(scaled_sprite, 
+                           (self.mouse_x - TOWER_SIZE//2, 
+                            self.mouse_y - TOWER_SIZE//2))
             
             if self.mouse_y < self.current_height - TOWER_PANEL_HEIGHT:
                 valid = self.is_position_valid(self.mouse_x, self.mouse_y, 
                                             self.dragged_tower.get('existing'))
+                # Dessiner un cercle de validation autour de la tour
                 pygame.draw.circle(self.screen, WHITE if valid else RED,
                                  (self.mouse_x, self.mouse_y), TOWER_SIZE//2, 2)
         
@@ -1281,6 +1307,14 @@ class Game:
         # Mettre à jour la position du bouton GO
         self.go_button_rect = pygame.Rect(
             self.current_width - GO_BUTTON_WIDTH - 10,
+            self.current_height - TOWER_PANEL_HEIGHT + (TOWER_PANEL_HEIGHT - GO_BUTTON_HEIGHT) // 2,
+            GO_BUTTON_WIDTH,
+            GO_BUTTON_HEIGHT
+        )
+        
+        # Mettre à jour la position du bouton RESET
+        self.reset_button_rect = pygame.Rect(
+            self.current_width - GO_BUTTON_WIDTH - 120,  # 110 pixels à gauche du bouton GO
             self.current_height - TOWER_PANEL_HEIGHT + (TOWER_PANEL_HEIGHT - GO_BUTTON_HEIGHT) // 2,
             GO_BUTTON_WIDTH,
             GO_BUTTON_HEIGHT
