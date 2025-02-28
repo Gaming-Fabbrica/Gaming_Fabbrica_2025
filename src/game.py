@@ -95,9 +95,6 @@ class Game:
 
         self.background = pygame.image.load('src/assets/background.png').convert()
 
-        # Enemies images
-        self.enemy_moray = pygame.image.load('src/assets/monsters/moray.png').convert_alpha()
-        
         # Chargement et préparation de l'image de terrain
         try:
             self.speed_mask = pygame.image.load("src/assets/speedmask.png").convert()
@@ -558,6 +555,8 @@ class Game:
                         int(10 * self.zoom),
                         2
                     )
+
+                    self.screen.blit(monster.sprite, (monster_screen_x, monster_screen_y))
                     
                     self.screen.blit(debug_surface, (0, 0))
                 
