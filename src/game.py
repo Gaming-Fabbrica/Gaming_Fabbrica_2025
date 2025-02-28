@@ -30,6 +30,11 @@ class Game:
         pygame.display.set_caption("Tower Defense")
         self.clock = pygame.time.Clock()
         
+        # Suivi de l'état du mode plein écran
+        self.is_fullscreen = False
+        self.current_width = WINDOW_WIDTH
+        self.current_height = WINDOW_HEIGHT
+        
         # Initialisation du système audio
         pygame.mixer.init()
         
@@ -101,6 +106,9 @@ class Game:
         self.light_power = LIGHT_MAX_POWER
         self.light_active = False
         self.light_position = None
+        self.light_recharge_delay = LIGHT_RECHARGE_DELAY  # Utiliser la constante
+        self.light_recharge_timer = 0.0  # Compte le temps écoulé depuis que la lumière a été déchargée
+        self.light_in_cooldown = False    # Indique si la lumière est en période de délai
         self.show_help = False  # Nouvel attribut pour afficher l'aide
         self.show_grid = True  # Nouvel attribut pour afficher/masquer la grille
 
@@ -130,6 +138,10 @@ class Game:
         
         # Initialisation des sprites des monstres
         self.monster_sprites = self.load_monster_sprites()
+        
+        # S'assurer que les dimensions actuelles sont correctes
+        self.current_width, self.current_height = self.screen.get_size()
+        self.update_ui_positions()
 
     def world_to_screen(self, x, y):
         """Convertit les coordonnées du monde en coordonnées écran"""
@@ -276,12 +288,12 @@ class Game:
                     
                     # Gestion des tours (uniquement en mode EDIT)
                     if self.game_mode == GameMode.EDIT:
-                        if self.mouse_y > WINDOW_HEIGHT - TOWER_PANEL_HEIGHT:
+                        if self.mouse_y > self.current_height - TOWER_PANEL_HEIGHT:
                             if not self.go_button_rect.collidepoint(self.mouse_x, self.mouse_y):
                                 panel_x = 10
                                 for tower_info in self.available_towers:
                                     if tower_info['count'] > 0:
-                                        tower_rect = pygame.Rect(panel_x, WINDOW_HEIGHT - TOWER_PANEL_HEIGHT + 10, 
+                                        tower_rect = pygame.Rect(panel_x, self.current_height - TOWER_PANEL_HEIGHT + 10, 
                                                               TOWER_SIZE, TOWER_SIZE)
                                         if tower_rect.collidepoint(self.mouse_x, self.mouse_y):
                                             self.dragged_tower = {'type': tower_info['type'], 'info': tower_info}
@@ -300,21 +312,23 @@ class Game:
                         self.dragging_map = True
                         self.last_mouse_pos = (self.mouse_x, self.mouse_y)
                     
-                elif event.button == 3 and self.game_mode == GameMode.EDIT and self.selected_tower:  # Clic droit
-                    if self.selected_tower in self.towers:
-                        self.towers.remove(self.selected_tower)
-                        for tower_info in self.available_towers:
-                            if tower_info['type'] == self.selected_tower.tower_type:
-                                tower_info['count'] += 1
-                        self.play_sound('tower_destroyed')  # Jouer le son de destruction
-                        self.selected_tower = None
+                elif event.button == 3:  # Clic droit
+                    # En mode EDIT, le clic droit supprime une tour sélectionnée
+                    if self.game_mode == GameMode.EDIT and self.selected_tower:
+                        if self.selected_tower in self.towers:
+                            self.towers.remove(self.selected_tower)
+                            for tower_info in self.available_towers:
+                                if tower_info['type'] == self.selected_tower.tower_type:
+                                    tower_info['count'] += 1
+                            self.play_sound('tower_destroyed')  # Jouer le son de destruction
+                            self.selected_tower = None
             
             elif event.type == pygame.MOUSEBUTTONUP:
                 if event.button == 1:  # Relâchement clic gauche
                     if self.game_mode == GameMode.EDIT and self.dragged_tower:  # Fin du drag & drop d'une tour
                         world_x, world_y = self.screen_to_world(self.mouse_x, self.mouse_y)
                         
-                        if self.mouse_y < WINDOW_HEIGHT - TOWER_PANEL_HEIGHT and \
+                        if self.mouse_y < self.current_height - TOWER_PANEL_HEIGHT and \
                            self.is_position_valid(self.mouse_x, self.mouse_y, self.dragged_tower.get('existing')):
                             
                             if 'existing' in self.dragged_tower:
@@ -359,6 +373,8 @@ class Game:
                     if not self.voices_enabled:
                         # Arrêter toutes les voix en cours si on désactive l'option
                         self.stop_voice()
+                elif event.key == pygame.K_F11:  # Touche F11 pour basculer en mode plein écran
+                    self.toggle_fullscreen()
         
         # Déplacement de la carte par drag (disponible dans tous les modes)
         if self.dragging_map and self.last_mouse_pos:
@@ -368,9 +384,9 @@ class Game:
             self.camera_y -= dy / self.zoom
             self.last_mouse_pos = (self.mouse_x, self.mouse_y)
             
-        # Gestion de la lumière avec le clic droit
+        # Gestion de la lumière avec le clic droit (uniquement en mode PLAY)
         mouse_buttons = pygame.mouse.get_pressed()
-        if mouse_buttons[2]:  # Clic droit
+        if mouse_buttons[2] and self.game_mode == GameMode.PLAY:  # Clic droit et uniquement en mode PLAY
             mouse_world_pos = self.screen_to_world(self.mouse_x, self.mouse_y)
             dist_to_village = math.sqrt((mouse_world_pos[0] - self.village_x)**2 + 
                                       (mouse_world_pos[1] - self.village_y)**2)
@@ -384,18 +400,23 @@ class Game:
                     is_in_valid_zone = True
                     break
             
-            if is_in_valid_zone and self.light_power > 0:
+            # Ne pas activer la lumière si la puissance est épuisée ou en délai de recharge
+            if is_in_valid_zone and self.light_power > 0 and not self.light_in_cooldown:
                 # Jouer le son de la lumière seulement quand elle est activée
                 if not self.light_active:
                     self.play_sound('light_on')
                 self.light_active = True
                 self.light_position = mouse_world_pos
             else:
-                if self.light_active:  # Ajouter cette condition pour jouer le son uniquement quand on désactive la lumière
+                # Si on était actif mais qu'on ne peut plus l'être (soit hors zone, soit puissance épuisée, soit en délai)
+                if self.light_active:
                     self.play_sound('light_off')
-                self.light_active = False
-                self.light_position = None
+                    self.light_active = False
+                    self.light_position = None
         else:
+            # Si on relâche le clic droit ou si on n'est pas en mode PLAY
+            if self.light_active:
+                self.play_sound('light_off')
             self.light_active = False
             self.light_position = None
         
@@ -433,8 +454,11 @@ class Game:
                 self.play_sound('monster_death')
             
             for monster in self.monsters:
+                # Ne passer la lumière active aux monstres que si sa puissance est supérieure à 0
+                light_active_for_monster = self.light_active and self.light_power > 0
+                
                 monster.update(self.towers, self.village_x, self.village_y, delta_time,
-                             self.light_position, self.light_active, self.light_power)
+                             self.light_position, light_active_for_monster, self.light_power)
                 
                 # Vérifier les attaques
                 if monster.current_target_type == 'tower' and monster.current_target:
@@ -469,8 +493,22 @@ class Game:
             # Mise à jour de la puissance de la lumière
             if self.light_active:
                 self.light_power = max(0, self.light_power - LIGHT_DRAIN_RATE * delta_time)
+                # Désactiver automatiquement la lumière si la puissance atteint zéro
+                if self.light_power <= 0:
+                    self.light_active = False
+                    self.light_position = None
+                    self.light_in_cooldown = True  # Activer le délai de recharge
+                    self.light_recharge_timer = 0.0  # Réinitialiser le timer
+                    self.play_sound('light_off')  # Jouer un son quand la lumière s'éteint automatiquement
             else:
-                self.light_power = min(LIGHT_MAX_POWER, self.light_power + LIGHT_RECHARGE_RATE * delta_time)
+                # Gestion du délai de recharge
+                if self.light_in_cooldown:
+                    self.light_recharge_timer += delta_time
+                    if self.light_recharge_timer >= self.light_recharge_delay:
+                        self.light_in_cooldown = False  # Fin du délai de recharge
+                else:
+                    # Recharge normale seulement si on n'est pas en délai
+                    self.light_power = min(LIGHT_MAX_POWER, self.light_power + LIGHT_RECHARGE_RATE * delta_time)
 
     def draw(self):
         # Remplir l'écran en noir
@@ -665,6 +703,7 @@ class Game:
                     is_in_valid_zone = True
                     break
             
+            # N'afficher l'indicateur de lumière que si la zone est valide ET que la puissance est > 0
             if is_in_valid_zone and self.light_power > 0:
                 cursor_light = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA)
                 pygame.draw.circle(cursor_light, (255, 255, 200, 30),
@@ -680,7 +719,7 @@ class Game:
                 text_surface = font.render(help_text, True, (255, 255, 200))
                 self.screen.blit(text_surface, (self.mouse_x + 20, self.mouse_y + 20))
             
-            # Barre de puissance de la lumière
+            # Barre de puissance de la lumière (toujours affichée mais rouge si vide)
             power_ratio = self.light_power / LIGHT_MAX_POWER
             bar_width = 50
             bar_height = 5
@@ -689,27 +728,53 @@ class Game:
             
             pygame.draw.rect(self.screen, (64, 64, 64),
                             (bar_x, bar_y, bar_width, bar_height))
-            pygame.draw.rect(self.screen, (255, 255, 200),
-                            (bar_x, bar_y, bar_width * power_ratio, bar_height))
+            
+            # Couleur de la barre en fonction de l'état : 
+            # - Bleu clair pendant la recharge normale
+            # - Rouge si épuisée 
+            # - Orange pendant le délai de recharge
+            if self.light_in_cooldown:
+                # Calcul du ratio de progression du délai
+                cooldown_ratio = self.light_recharge_timer / self.light_recharge_delay
+                pygame.draw.rect(self.screen, (255, 128, 0),
+                                (bar_x, bar_y, bar_width * cooldown_ratio, bar_height))
+                
+                # Afficher un texte de cooldown
+                font = pygame.font.Font(None, 20)
+                cooldown_text = f"Délai: {self.light_recharge_delay - self.light_recharge_timer:.1f}s"
+                text_surface = font.render(cooldown_text, True, (255, 128, 0))
+                self.screen.blit(text_surface, (self.mouse_x + 20, self.mouse_y + 20))
+            else:
+                # Couleur normale ou rouge si épuisée
+                bar_color = (100, 200, 255) if self.light_power > 0 else (255, 0, 0)
+                pygame.draw.rect(self.screen, bar_color,
+                                (bar_x, bar_y, bar_width * power_ratio, bar_height))
+                
+                # Afficher le texte d'aide pour activer la lumière seulement si la puissance > 0 et non en cooldown
+                if is_in_valid_zone and self.light_power > 0:
+                    font = pygame.font.Font(None, 20)
+                    help_text = "Clic droit pour activer la lumière"
+                    text_surface = font.render(help_text, True, (255, 255, 200))
+                    self.screen.blit(text_surface, (self.mouse_x + 20, self.mouse_y + 20))
         
         # Interface utilisateur
         if self.game_mode == GameMode.EDIT:
             pygame.draw.rect(self.screen, GRAY, 
-                           (0, WINDOW_HEIGHT - TOWER_PANEL_HEIGHT, 
-                            WINDOW_WIDTH, TOWER_PANEL_HEIGHT))
+                           (0, self.current_height - TOWER_PANEL_HEIGHT, 
+                            self.current_width, TOWER_PANEL_HEIGHT))
             
             panel_x = 10
             for tower_info in self.available_towers:
                 if tower_info['count'] > 0:
                     pygame.draw.circle(self.screen, tower_info['color'],
                                      (panel_x + TOWER_SIZE//2, 
-                                      WINDOW_HEIGHT - TOWER_PANEL_HEIGHT + TOWER_SIZE//2),
+                                      self.current_height - TOWER_PANEL_HEIGHT + TOWER_SIZE//2),
                                      TOWER_SIZE//2)
                     count_text = str(tower_info['count'])
                     text_surface = pygame.font.Font(None, 24).render(count_text, True, WHITE)
                     self.screen.blit(text_surface, 
                                    (panel_x + TOWER_SIZE//2 - 5, 
-                                    WINDOW_HEIGHT - TOWER_PANEL_HEIGHT + TOWER_SIZE + 5))
+                                    self.current_height - TOWER_PANEL_HEIGHT + TOWER_SIZE + 5))
                 panel_x += TOWER_SIZE + 10
             
             button_color = GREEN if self.all_towers_placed() else GRAY
@@ -729,7 +794,7 @@ class Game:
             pygame.draw.circle(self.screen, color, 
                              (self.mouse_x, self.mouse_y), TOWER_SIZE//2)
             
-            if self.mouse_y < WINDOW_HEIGHT - TOWER_PANEL_HEIGHT:
+            if self.mouse_y < self.current_height - TOWER_PANEL_HEIGHT:
                 valid = self.is_position_valid(self.mouse_x, self.mouse_y, 
                                             self.dragged_tower.get('existing'))
                 pygame.draw.circle(self.screen, WHITE if valid else RED,
@@ -744,7 +809,7 @@ class Game:
         if self.time_accelerated:
             speed_text = f"x{TIME_ACCELERATIONS[self.time_acceleration_index]}"
             text_surface = font.render(speed_text, True, (255, 255, 0))
-            self.screen.blit(text_surface, (WINDOW_WIDTH - 60, 10))
+            self.screen.blit(text_surface, (self.current_width - 60, 10))
         
         # Barre de vie du village
         health_ratio = max(0, self.village_health / VILLAGE_MAX_HEALTH)
@@ -792,7 +857,7 @@ class Game:
         
         # Affichage de l'aide (après tout le reste pour qu'elle soit au-dessus)
         if self.show_help:
-            help_surface = pygame.Surface((WINDOW_WIDTH - 100, WINDOW_HEIGHT - 100), pygame.SRCALPHA)
+            help_surface = pygame.Surface((self.current_width - 100, self.current_height - 100), pygame.SRCALPHA)
             help_surface.fill((0, 0, 0, 220))  # Fond semi-transparent
             
             help_texts = [
@@ -808,10 +873,11 @@ class Game:
                 "T : Changer l'accélération du temps",
                 "P : Couper/activer la musique",
                 "V : Couper/activer les voix",
+                "F11 : Basculer en mode plein écran",
                 "",
                 "Commandes souris:",
                 "Clic gauche : Placer/déplacer les tours (mode EDIT)",
-                "Clic droit : Supprimer une tour (mode EDIT) / Activer la lumière (mode PLAY)",
+                "Clic droit : Supprimer une tour sélectionnée (mode EDIT) / Activer la lumière (mode PLAY)",
                 "Clic milieu/molette : Déplacer la carte",
                 "Molette haut/bas : Zoomer/dézoomer",
                 "P : Couper/activer la musique",
@@ -845,7 +911,7 @@ class Game:
             help_surface.blit(close_text, close_rect)
             
             # Dessiner le panneau d'aide centré
-            help_rect = help_surface.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2))
+            help_rect = help_surface.get_rect(center=(self.current_width // 2, self.current_height // 2))
             self.screen.blit(help_surface, help_rect)
             
             # Bordure
@@ -1084,5 +1150,40 @@ class Game:
                 sprites[monster_type] = default_sprite
         
         return sprites
+
+    def toggle_fullscreen(self):
+        """Bascule entre le mode plein écran et le mode fenêtré"""
+        self.is_fullscreen = not self.is_fullscreen
+        
+        if self.is_fullscreen:
+            # Sauvegarder la taille de la fenêtre actuelle avant de passer en plein écran
+            self.windowed_size = self.screen.get_size()
+            # Passer en mode plein écran
+            self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+        else:
+            # Revenir au mode fenêtré avec la taille précédente
+            self.screen = pygame.display.set_mode(
+                (WINDOW_WIDTH, WINDOW_HEIGHT)
+            )
+        
+        # Mettre à jour la taille actuelle
+        self.current_width, self.current_height = self.screen.get_size()
+        # Mettre à jour les positions des éléments d'interface
+        self.update_ui_positions()
+
+    def update_ui_positions(self):
+        """Recalcule les positions des éléments d'interface en fonction de la taille d'écran actuelle"""
+        # Mettre à jour la position du bouton GO
+        self.go_button_rect = pygame.Rect(
+            self.current_width - GO_BUTTON_WIDTH - 10,
+            self.current_height - TOWER_PANEL_HEIGHT + (TOWER_PANEL_HEIGHT - GO_BUTTON_HEIGHT) // 2,
+            GO_BUTTON_WIDTH,
+            GO_BUTTON_HEIGHT
+        )
+        
+        # Mettre à jour les autres éléments de l'interface si nécessaire
+        # Point central de l'écran pour le zoom
+        self.center_x = self.current_width // 2
+        self.center_y = self.current_height // 2
 
 
