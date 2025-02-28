@@ -606,7 +606,7 @@ class Game:
         self.screen.blit(scaled_background, (background_x, background_y))
         
         # Créer une surface noire pour les lumières (pas transparente)
-        light_surface = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
+        light_surface = pygame.Surface((2048, 2048))
         light_surface.fill((0, 0, 0))  # Surface noire pour le blending additif
         
         # Dessiner la grille
