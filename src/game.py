@@ -611,7 +611,7 @@ class Game:
         self.screen.blit(scaled_background, (background_x, background_y))
         
         # Créer une surface noire pour les lumières (pas transparente)
-        light_surface = pygame.Surface((2048, 2048))
+        light_surface = pygame.Surface((WORLD_SIZE, WORLD_SIZE))
         light_surface.fill((0, 0, 0))  # Surface noire pour le blending additif
         
         # Dessiner la grille
@@ -651,7 +651,7 @@ class Game:
                    GREEN if tower.tower_type == TowerType.MEDIUM else YELLOW
             
             if self.show_ranges:
-                range_surface = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA)
+                range_surface = pygame.Surface((WORLD_SIZE, WORLD_SIZE), pygame.SRCALPHA)
                 vision_radius = int(tower.vision_range * self.zoom)
                 pygame.draw.circle(range_surface, (*color, RANGE_ALPHA//2),
                                  (int(screen_x), int(screen_y)), vision_radius)
