@@ -85,6 +85,7 @@ class Game:
         self.light_power = LIGHT_MAX_POWER
         self.light_active = False
         self.light_position = None
+        self.show_help = False  # Nouvel attribut pour afficher l'aide
 
         self.background = pygame.image.load('src/assets/background.png').convert()
         
@@ -311,6 +312,8 @@ class Game:
                 elif event.key == pygame.K_t:  # Touche T pour changer l'accélération du temps
                     self.time_acceleration_index = (self.time_acceleration_index + 1) % len(TIME_ACCELERATIONS)
                     self.time_accelerated = self.time_acceleration_index > 0
+                elif event.key == pygame.K_h:  # Touche H pour afficher/masquer l'aide
+                    self.show_help = not self.show_help
         
         # Déplacement de la carte par drag (disponible dans tous les modes)
         if self.dragging_map and self.last_mouse_pos:
@@ -413,7 +416,16 @@ class Game:
         # Remplir l'écran en noir
         self.screen.fill(BLACK)
 
-        self.screen.blit(self.background, (0, 0))
+        # Calculer la taille et la position du fond en fonction du zoom
+        background_width = int(WORLD_SIZE * self.zoom)
+        background_height = int(WORLD_SIZE * self.zoom)
+        
+        # Calculer la position du fond pour qu'il soit centré sur la caméra
+        background_x, background_y = self.world_to_screen(0, 0)
+        
+        # Redimensionner et positionner l'image de fond
+        scaled_background = pygame.transform.scale(self.background, (background_width, background_height))
+        self.screen.blit(scaled_background, (background_x, background_y))
         
         # Créer une surface noire pour les lumières (pas transparente)
         light_surface = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
@@ -714,6 +726,62 @@ class Game:
                                      (int(screen_x), int(screen_y)), 5)
             
             self.screen.blit(terrain_surface, (0, 0))
+        
+        # Affichage de l'aide (après tout le reste pour qu'elle soit au-dessus)
+        if self.show_help:
+            help_surface = pygame.Surface((WINDOW_WIDTH - 100, WINDOW_HEIGHT - 100), pygame.SRCALPHA)
+            help_surface.fill((0, 0, 0, 220))  # Fond semi-transparent
+            
+            help_texts = [
+                "Aide du jeu - Commandes clavier",
+                "",
+                "H : Afficher/masquer cette aide",
+                "R : Afficher/masquer les portées des tours",
+                "D : Afficher/masquer les informations de debug",
+                "S : Afficher/masquer le debug de vitesse/terrain",
+                "N : Afficher/masquer les noms des entités",
+                "M : Afficher/masquer les zones d'effet des monstres",
+                "T : Changer l'accélération du temps",
+                "",
+                "Commandes souris:",
+                "Clic gauche : Placer/déplacer les tours (mode EDIT)",
+                "Clic droit : Supprimer une tour (mode EDIT) / Activer la lumière (mode PLAY)",
+                "Clic milieu/molette : Déplacer la carte",
+                "Molette haut/bas : Zoomer/dézoomer"
+            ]
+            
+            font = pygame.font.Font(None, 28)
+            title_font = pygame.font.Font(None, 36)
+            
+            y_offset = 20
+            
+            # Titre
+            title_text = title_font.render(help_texts[0], True, (255, 255, 200))
+            title_rect = title_text.get_rect(center=(help_surface.get_width() // 2, y_offset + 10))
+            help_surface.blit(title_text, title_rect)
+            y_offset += 50
+            
+            # Corps de l'aide
+            for i in range(1, len(help_texts)):
+                if help_texts[i] == "":
+                    y_offset += 20
+                    continue
+                    
+                text_surface = font.render(help_texts[i], True, (220, 220, 220))
+                help_surface.blit(text_surface, (30, y_offset))
+                y_offset += 30
+            
+            # Instructions pour fermer
+            close_text = font.render("Appuyez sur H pour fermer", True, (255, 200, 200))
+            close_rect = close_text.get_rect(center=(help_surface.get_width() // 2, help_surface.get_height() - 30))
+            help_surface.blit(close_text, close_rect)
+            
+            # Dessiner le panneau d'aide centré
+            help_rect = help_surface.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2))
+            self.screen.blit(help_surface, help_rect)
+            
+            # Bordure
+            pygame.draw.rect(self.screen, (200, 200, 200), help_rect, 2)
         
         pygame.display.flip()
 
