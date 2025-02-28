@@ -81,6 +81,7 @@ python main.py
 - **S** : Afficher/masquer le débogage de vitesse et terrain
 - **N** : Afficher/masquer les noms des entités
 - **M** : Afficher/masquer les zones d'effet des monstres
+- **G** : Afficher/masquer la grille
 - **T** : Changer l'accélération du temps (1x, 2x, 4x, 8x)
 
 3. Mécaniques de jeu :
