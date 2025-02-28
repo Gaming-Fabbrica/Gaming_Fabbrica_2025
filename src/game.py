@@ -491,7 +491,7 @@ class Game:
                              (int(screen_x), int(screen_y)), 
                              int(TOWER_SIZE/2 * self.zoom))
             
-            self.screen.blit(pygame.transform.scale(self.tower, (int(TOWER_SIZE * self.zoom), int(TOWER_SIZE * self.zoom))), (screen_x - TOWER_SIZE/2, screen_y - TOWER_SIZE/2))
+            self.screen.blit(pygame.transform.scale(self.tower, (int(TOWER_SIZE * self.zoom), int(TOWER_SIZE * self.zoom))), (screen_x - TOWER_SIZE/2*self.zoom, screen_y - TOWER_SIZE/2*self.zoom))
             
             health_ratio = tower.current_health / tower.max_health
             health_width = TOWER_SIZE * self.zoom
