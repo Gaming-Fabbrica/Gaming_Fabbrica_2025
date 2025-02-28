@@ -5,7 +5,10 @@ from dataclasses import dataclass
 from ..constants import (
     MONSTER_SIZE, WINDOW_WIDTH, WINDOW_HEIGHT, LIGHT_RADIUS,
     MAX_FLEE_TIME, MONSTER_FEAR_DURATION, DEBUG_LINE_ALPHA,
-    HEAL_RANGE, SPIRIT_BUFF_RANGE, KAMIKAZE_EXPLOSION_RANGE
+    HEAL_RANGE, SPIRIT_BUFF_RANGE, KAMIKAZE_EXPLOSION_RANGE,
+    TOWER_SIZE, VILLAGE_SIZE, MAX_VISIBILITY_RANGE,
+    FLEE_DISTANCE_MIN, FLEE_DISTANCE_MAX, FLEE_ANGLE_VARIATION,
+    WORLD_SIZE
 )
 from ..enums import MonsterType, MONSTER_NAMES
 from .projectile import Projectile
@@ -417,3 +420,18 @@ class Monster:
         screen_x = (self.x - camera_x) * zoom + WINDOW_WIDTH/2
         screen_y = (self.y - camera_y) * zoom + WINDOW_HEIGHT/2
         return screen_x, screen_y 
+
+    def is_visible(self, village_x, village_y, towers):
+        """Vérifie si le monstre est visible depuis le village ou une tour"""
+        # Vérifier la distance par rapport au village
+        dist_to_village = math.sqrt((self.x - village_x)**2 + (self.y - village_y)**2)
+        if dist_to_village <= MAX_VISIBILITY_RANGE:
+            return True
+            
+        # Vérifier la distance par rapport aux tours
+        for tower in towers:
+            dist_to_tower = math.sqrt((self.x - tower.x)**2 + (self.y - tower.y)**2)
+            if dist_to_tower <= tower.vision_range:
+                return True
+                
+        return False 
