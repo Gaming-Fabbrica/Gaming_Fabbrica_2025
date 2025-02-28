@@ -92,6 +92,7 @@ class Game:
         self.light_active = False
         self.light_position = None
         self.show_help = False  # Nouvel attribut pour afficher l'aide
+        self.show_grid = True  # Nouvel attribut pour afficher/masquer la grille
 
         self.background = pygame.image.load('src/assets/background.png').convert()
 
@@ -325,6 +326,8 @@ class Game:
                     self.time_accelerated = self.time_acceleration_index > 0
                 elif event.key == pygame.K_h:  # Touche H pour afficher/masquer l'aide
                     self.show_help = not self.show_help
+                elif event.key == pygame.K_g:  # Touche G pour afficher/masquer la grille
+                    self.show_grid = not self.show_grid
         
         # Déplacement de la carte par drag (disponible dans tous les modes)
         if self.dragging_map and self.last_mouse_pos:
@@ -453,18 +456,19 @@ class Game:
         grid_start_y = (grid_start_y // GRID_SIZE) * GRID_SIZE
         grid_end_y = (grid_end_y // GRID_SIZE + 1) * GRID_SIZE
         
-        for x in range(grid_start_x, grid_end_x + GRID_SIZE, GRID_SIZE):
-            start_pos = self.world_to_screen(x, grid_start_y)
-            end_pos = self.world_to_screen(x, grid_end_y)
-            pygame.draw.line(self.screen, GRAY, 
-                            (int(start_pos[0]), int(start_pos[1])), 
-                            (int(end_pos[0]), int(end_pos[1])))
-        for y in range(grid_start_y, grid_end_y + GRID_SIZE, GRID_SIZE):
-            start_pos = self.world_to_screen(grid_start_x, y)
-            end_pos = self.world_to_screen(grid_end_x, y)
-            pygame.draw.line(self.screen, GRAY, 
-                            (int(start_pos[0]), int(start_pos[1])), 
-                            (int(end_pos[0]), int(end_pos[1])))
+        if self.show_grid:
+            for x in range(grid_start_x, grid_end_x + GRID_SIZE, GRID_SIZE):
+                start_pos = self.world_to_screen(x, grid_start_y)
+                end_pos = self.world_to_screen(x, grid_end_y)
+                pygame.draw.line(self.screen, GRAY, 
+                                (int(start_pos[0]), int(start_pos[1])), 
+                                (int(end_pos[0]), int(end_pos[1])))
+            for y in range(grid_start_y, grid_end_y + GRID_SIZE, GRID_SIZE):
+                start_pos = self.world_to_screen(grid_start_x, y)
+                end_pos = self.world_to_screen(grid_end_x, y)
+                pygame.draw.line(self.screen, GRAY, 
+                                (int(start_pos[0]), int(start_pos[1])), 
+                                (int(end_pos[0]), int(end_pos[1])))
         
         # Dessiner le village
         village_screen_x, village_screen_y = self.world_to_screen(self.village_x, self.village_y)
@@ -754,6 +758,7 @@ class Game:
                 "S : Afficher/masquer le debug de vitesse/terrain",
                 "N : Afficher/masquer les noms des entités",
                 "M : Afficher/masquer les zones d'effet des monstres",
+                "G : Afficher/masquer la grille",
                 "T : Changer l'accélération du temps",
                 "",
                 "Commandes souris:",
