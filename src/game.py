@@ -59,6 +59,7 @@ class Game:
         # Initialisation du gestionnaire de scores
         self.score_manager = ScoreManager()
         self.current_score = 0
+        self.final_score = 0  # Nouveau: stockage du score final
         self.player_name = "Joueur"
         self.show_leaderboard = False
         self.game_time = 0.0
@@ -339,7 +340,7 @@ class Game:
                             elif not self.dragged_tower:
                                 self.dragging_map = True
                                 self.last_mouse_pos = (self.mouse_x, self.mouse_y)
-                    else:  # En mode PLAY
+                    elif self.game_mode == GameMode.PLAY:  # En mode PLAY
                         # Démarrer le déplacement de la carte si on clique sur une zone vide
                         self.dragging_map = True
                         self.last_mouse_pos = (self.mouse_x, self.mouse_y)
@@ -377,42 +378,56 @@ class Game:
                     self.dragging_map = False
             
             elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_r:  # Touche R pour afficher/masquer les ranges
+                # Gérer d'abord la saisie du nom si on est en mode saisie
+                if self.game_mode == GameMode.GAME_OVER and self.entering_name:
+                    if event.key == pygame.K_RETURN or event.key == pygame.K_SPACE:
+                        if self.temp_player_name.strip():
+                            self.player_name = self.temp_player_name.strip()
+                            if self.is_high_score:
+                                waves_completed = self.wave_manager.current_wave if self.wave_manager else 0
+                                self.score_manager.add_score(self.player_name, self.final_score, self.game_time, waves_completed)
+                        self.entering_name = False
+                    elif event.key == pygame.K_BACKSPACE:
+                        self.temp_player_name = self.temp_player_name[:-1]
+                    elif event.unicode.isprintable() and len(self.temp_player_name) < 20:
+                        self.temp_player_name += event.unicode
+                    return True
+                
+                # Gérer les autres touches seulement si on n'est pas en train de saisir un nom
+                if event.key == pygame.K_r:
                     self.show_ranges = not self.show_ranges
-                elif event.key == pygame.K_d:  # Touche D pour afficher/masquer le debug
+                elif event.key == pygame.K_d:
                     self.show_debug = not self.show_debug
-                elif event.key == pygame.K_s:  # Touche S pour le debug de vitesse
+                elif event.key == pygame.K_s:
                     self.show_speed_debug = not self.show_speed_debug
-                elif event.key == pygame.K_n:  # Touche N pour afficher/masquer les noms
+                elif event.key == pygame.K_n:
                     self.show_names = not self.show_names
-                elif event.key == pygame.K_m:  # Touche M pour afficher/masquer les zones d'effet des monstres
+                elif event.key == pygame.K_m:
                     self.show_monster_ranges = not self.show_monster_ranges
-                elif event.key == pygame.K_t:  # Touche T pour changer l'accélération du temps
+                elif event.key == pygame.K_t:
                     self.time_acceleration_index = (self.time_acceleration_index + 1) % len(TIME_ACCELERATIONS)
                     self.time_accelerated = self.time_acceleration_index > 0
-                elif event.key == pygame.K_h:  # Touche H pour afficher/masquer l'aide
+                elif event.key == pygame.K_h:
                     self.show_help = not self.show_help
-                elif event.key == pygame.K_g:  # Touche G pour afficher/masquer la grille
+                elif event.key == pygame.K_g:
                     self.show_grid = not self.show_grid
-                elif event.key == pygame.K_p:  # Touche P pour couper/activer la musique
+                elif event.key == pygame.K_p:
                     self.music_enabled = not self.music_enabled
                     if self.music_enabled and self.game_mode == GameMode.PLAY:
                         self.play_background_music('background_music.mp3')
                     else:
                         self.stop_background_music()
-                elif event.key == pygame.K_v:  # Touche V pour couper/activer les voix
+                elif event.key == pygame.K_v:
                     self.voices_enabled = not self.voices_enabled
                     if not self.voices_enabled:
-                        # Arrêter toutes les voix en cours si on désactive l'option
                         self.stop_voice()
-                elif event.key == pygame.K_F11:  # Touche F11 pour basculer en mode plein écran
+                elif event.key == pygame.K_F11:
                     self.toggle_fullscreen()
-                elif event.key == pygame.K_l:  # Touche L pour afficher/masquer le leaderboard
+                elif event.key == pygame.K_l and not self.entering_name:
                     self.show_leaderboard = not self.show_leaderboard
-                elif event.key == pygame.K_SPACE:  # Touche ESPACE pour recommencer après un game over
-                    if self.game_over:
-                        self.reset_game()
-                        self.show_leaderboard = False
+                elif event.key == pygame.K_SPACE and self.game_mode == GameMode.GAME_OVER and not self.entering_name:
+                    self.reset_game()
+                    self.show_leaderboard = False
         
         # Déplacement de la carte par drag (disponible dans tous les modes)
         if self.dragging_map and self.last_mouse_pos:
@@ -424,7 +439,7 @@ class Game:
             
         # Gestion de la lumière avec le clic droit (uniquement en mode PLAY)
         mouse_buttons = pygame.mouse.get_pressed()
-        if mouse_buttons[2] and self.game_mode == GameMode.PLAY:  # Clic droit et uniquement en mode PLAY
+        if mouse_buttons[2] and self.game_mode == GameMode.PLAY:
             mouse_world_pos = self.screen_to_world(self.mouse_x, self.mouse_y)
             dist_to_village = math.sqrt((mouse_world_pos[0] - self.village_x)**2 + 
                                       (mouse_world_pos[1] - self.village_y)**2)
@@ -466,7 +481,7 @@ class Game:
 
     def update(self):
         """Mise à jour de la logique du jeu"""
-        if self.game_mode == GameMode.PLAY and not self.game_over:
+        if self.game_mode == GameMode.PLAY:
             current_time = time.time() - self.game_start_time
             self.game_time = current_time
             
@@ -556,11 +571,8 @@ class Game:
                     if dist < VILLAGE_SIZE:  # Si le monstre est assez proche du village
                         # Infliger des dégâts au village
                         self.village_health -= monster.current_damage * delta_time * monster.attack_speed
-                        # Perdre des points quand le village subit des dégâts
-                        self.current_score = max(0, self.current_score - int(monster.current_damage * delta_time * monster.attack_speed))
                         
                         if self.village_health <= 0:
-                            self.game_over = True
                             self.play_sound('game_over')  # Jouer le son de game over
                             # Gérer le score final et vérifier s'il s'agit d'un high score
                             self.handle_game_over()
@@ -631,7 +643,6 @@ class Game:
         # Dessiner le village
         village_screen_x, village_screen_y = self.world_to_screen(self.village_x, self.village_y)
         village_radius = int(VILLAGE_SIZE/2 * self.zoom)
-        # pygame.draw.circle(self.screen, RED, (int(village_screen_x), int(village_screen_y)), village_radius)
 
         # Dessiner le village (image)
         self.screen.blit(
@@ -938,29 +949,65 @@ class Game:
                             (health_x, health_y, health_width * health_ratio, health_height))
         
         # Game Over
-        if self.game_over:
-            font_big = pygame.font.Font(None, 74)
+        if self.game_mode == GameMode.GAME_OVER:
+            # Fond semi-transparent pour le game over
+            overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
+            overlay.fill((0, 0, 0))
+            overlay.set_alpha(180)  # Ajuster l'opacité
+            self.screen.blit(overlay, (0, 0))
+            
+            font_big = pygame.font.Font(None, 100)  # Police plus grande
             game_over_text = font_big.render("GAME OVER", True, (255, 0, 0))
+            # Ajouter un contour blanc pour plus de visibilité
+            game_over_outline = font_big.render("GAME OVER", True, (255, 255, 255))
+            
             text_rect = game_over_text.get_rect(center=(WINDOW_WIDTH/2, WINDOW_HEIGHT/2 - 100))
+            # Dessiner le contour légèrement décalé
+            self.screen.blit(game_over_outline, (text_rect.x + 2, text_rect.y + 2))
             self.screen.blit(game_over_text, text_rect)
             
-            score_text = font_big.render(f"Score: {self.current_score}", True, (255, 200, 0))
+            font_score = pygame.font.Font(None, 74)
+            score_text = font_score.render(f"Score: {self.final_score}", True, (255, 200, 0))
             score_rect = score_text.get_rect(center=(WINDOW_WIDTH/2, WINDOW_HEIGHT/2 - 30))
             self.screen.blit(score_text, score_rect)
             
-            font = pygame.font.Font(None, 36)
-            if self.score_manager.is_high_score(self.current_score):
+            font = pygame.font.Font(None, 48)  # Police plus grande pour les instructions
+            if self.is_high_score:
                 highscore_text = font.render("Nouveau High Score!", True, (0, 255, 0))
                 highscore_rect = highscore_text.get_rect(center=(WINDOW_WIDTH/2, WINDOW_HEIGHT/2 + 30))
                 self.screen.blit(highscore_text, highscore_rect)
             
-            restart_text = font.render("Appuyez sur ESPACE pour recommencer", True, (200, 200, 200))
-            restart_rect = restart_text.get_rect(center=(WINDOW_WIDTH/2, WINDOW_HEIGHT/2 + 70))
-            self.screen.blit(restart_text, restart_rect)
-            
-            leaderboard_text = font.render("Appuyez sur L pour voir le leaderboard", True, (200, 200, 200))
-            leaderboard_rect = leaderboard_text.get_rect(center=(WINDOW_WIDTH/2, WINDOW_HEIGHT/2 + 110))
-            self.screen.blit(leaderboard_text, leaderboard_rect)
+            if self.entering_name:
+                # Mise à jour du curseur clignotant
+                self.name_cursor_time += 1
+                if self.name_cursor_time >= 30:  # Changer l'état du curseur toutes les 30 frames
+                    self.name_cursor_visible = not self.name_cursor_visible
+                    self.name_cursor_time = 0
+                
+                name_prompt = font.render("Entrez votre nom:", True, (255, 255, 255))
+                name_rect = name_prompt.get_rect(center=(WINDOW_WIDTH/2, WINDOW_HEIGHT/2 + 70))
+                self.screen.blit(name_prompt, name_rect)
+                
+                # Afficher le nom en cours de saisie avec un curseur clignotant
+                display_name = self.temp_player_name + ('|' if self.name_cursor_visible else ' ')
+                name_text = font.render(display_name, True, (255, 255, 255))
+                name_text_rect = name_text.get_rect(center=(WINDOW_WIDTH/2, WINDOW_HEIGHT/2 + 110))
+                self.screen.blit(name_text, name_text_rect)
+                
+                # Instructions pour la saisie
+                instruction_font = pygame.font.Font(None, 36)
+                instruction_text = "Appuyez sur ENTRÉE ou ESPACE pour valider"
+                instruction_surface = instruction_font.render(instruction_text, True, (200, 200, 200))
+                instruction_rect = instruction_surface.get_rect(center=(WINDOW_WIDTH/2, WINDOW_HEIGHT/2 + 150))
+                self.screen.blit(instruction_surface, instruction_rect)
+            else:
+                restart_text = font.render("Appuyez sur ESPACE pour recommencer", True, (255, 255, 255))
+                restart_rect = restart_text.get_rect(center=(WINDOW_WIDTH/2, WINDOW_HEIGHT/2 + 70))
+                self.screen.blit(restart_text, restart_rect)
+                
+                leaderboard_text = font.render("Appuyez sur L pour voir le leaderboard", True, (255, 255, 255))
+                leaderboard_rect = leaderboard_text.get_rect(center=(WINDOW_WIDTH/2, WINDOW_HEIGHT/2 + 110))
+                self.screen.blit(leaderboard_text, leaderboard_rect)
         
         # Afficher l'image du terrain en mode debug
         if self.show_speed_debug:
@@ -1330,7 +1377,6 @@ class Game:
     def reset_game(self):
         """Réinitialise le jeu pour une nouvelle partie"""
         self.game_mode = GameMode.EDIT
-        self.game_over = False
         self.village_health = VILLAGE_MAX_HEALTH
         self.towers = []
         self.monsters = []
@@ -1362,18 +1408,28 @@ class Game:
 
     def handle_game_over(self):
         """Gère la fin de partie et l'enregistrement des scores"""
+        # Désactiver la lumière
+        self.light_active = False
+        self.light_position = None
+        
+        # Changer le mode de jeu
+        self.game_mode = GameMode.GAME_OVER
+        
         # Vérifier si le score est un high score
         waves_completed = self.wave_manager.current_wave if self.wave_manager else 0
+        self.final_score = self.current_score  # Sauvegarder le score final
         
-        if self.score_manager.is_high_score(self.current_score):
-            # Afficher une boîte de dialogue pour entrer son nom
-            # Comme nous ne pouvons pas facilement créer des boîtes de dialogue dans Pygame,
-            # nous utiliserons un nom par défaut pour l'instant
-            self.score_manager.add_score(self.player_name, self.current_score, self.game_time, waves_completed)
-            self.show_leaderboard = True
+        # Initialiser les variables pour la saisie du nom
+        self.entering_name = True
+        self.temp_player_name = ""
+        self.name_cursor_visible = True
+        self.name_cursor_time = 0
+        
+        if self.score_manager.is_high_score(self.final_score):
+            self.is_high_score = True
         else:
-            # Afficher le score final
-            self.show_leaderboard = True
+            self.is_high_score = False
+            self.entering_name = False  # Pas besoin de saisir le nom si ce n'est pas un high score
 
     def draw_ui(self):
         """Dessine l'interface utilisateur"""
@@ -1445,7 +1501,7 @@ class Game:
             waves_surface = font.render(f"{entry['waves_completed']}", True, (220, 220, 220))
             
             # Mettre en évidence le score actuel
-            if self.game_over and entry["player_name"] == self.player_name and entry["score"] == self.current_score and entry["survived_time"] == self.game_time:
+            if self.game_over and entry["player_name"] == self.player_name and entry["score"] == self.final_score and entry["survived_time"] == self.game_time:
                 pygame.draw.rect(leaderboard_surface, (100, 100, 150, 100), 
                                (30, y_offset - 5, leaderboard_surface.get_width() - 60, 40))
             

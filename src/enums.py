@@ -3,6 +3,7 @@ from enum import Enum, auto
 class GameMode(Enum):
     EDIT = 1
     PLAY = 2
+    GAME_OVER = 3
 
 class TowerType(Enum):
     POWERFUL = 1    # Tour puissante
