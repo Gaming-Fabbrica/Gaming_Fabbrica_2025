@@ -560,8 +560,6 @@ class Game:
                         2
                     )
 
-                    self.screen.blit(monster.sprite, (monster_screen_x, monster_screen_y))
-                    
                     self.screen.blit(debug_surface, (0, 0))
                 
                 if self.show_speed_debug and monster.is_visible(self.village_x, self.village_y, self.towers):

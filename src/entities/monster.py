@@ -357,6 +357,8 @@ class Monster:
         # Dessiner le triangle du monstre
         points = self.calculate_triangle_points(screen_x, screen_y, zoom)
         pygame.draw.polygon(screen, self.color, points)
+
+        screen.blit(pygame.transform.scale(self.game.monster_sprites[self.monster_type], (int(MONSTER_SIZE * zoom), int(MONSTER_SIZE * zoom))), (screen_x, screen_y))
         
         # Dessiner la barre de vie
         self.draw_health_bar(screen, screen_x, screen_y, zoom)
