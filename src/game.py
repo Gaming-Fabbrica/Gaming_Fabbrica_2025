@@ -118,6 +118,13 @@ class Game:
         # Initialisation des sprites des monstres
         self.monster_sprites = self.load_monster_sprites()
 
+        self.sound_volume = 0.5
+        self.sound_enabled = True
+        
+        # Configuration de la musique de fond
+        self.music_enabled = True
+        self.music_volume = 0.3  # Volume plus bas que les effets sonores
+
     def world_to_screen(self, x, y):
         """Convertit les coordonnées du monde en coordonnées écran"""
         screen_x = (x - self.camera_x) * self.zoom + self.center_x
@@ -169,6 +176,9 @@ class Game:
         self.camera_x = self.village_x
         self.camera_y = self.village_y
         self.zoom = 0.8  # Dézoomer un peu pour voir plus de terrain
+        
+        # Démarrer la musique de fond
+        self.play_background_music('background_music.mp3')
 
     def save_map(self):
         """Sauvegarde la position des tours dans un fichier"""
@@ -328,6 +338,12 @@ class Game:
                     self.show_help = not self.show_help
                 elif event.key == pygame.K_g:  # Touche G pour afficher/masquer la grille
                     self.show_grid = not self.show_grid
+                elif event.key == pygame.K_p:  # Touche P pour couper/activer la musique
+                    self.music_enabled = not self.music_enabled
+                    if self.music_enabled and self.game_mode == GameMode.PLAY:
+                        self.play_background_music('background_music.mp3')
+                    else:
+                        self.stop_background_music()
         
         # Déplacement de la carte par drag (disponible dans tous les modes)
         if self.dragging_map and self.last_mouse_pos:
@@ -760,12 +776,14 @@ class Game:
                 "M : Afficher/masquer les zones d'effet des monstres",
                 "G : Afficher/masquer la grille",
                 "T : Changer l'accélération du temps",
+                "P : Couper/activer la musique de fond",
                 "",
                 "Commandes souris:",
                 "Clic gauche : Placer/déplacer les tours (mode EDIT)",
                 "Clic droit : Supprimer une tour (mode EDIT) / Activer la lumière (mode PLAY)",
                 "Clic milieu/molette : Déplacer la carte",
-                "Molette haut/bas : Zoomer/dézoomer"
+                "Molette haut/bas : Zoomer/dézoomer",
+                "P : Couper/activer la musique"
             ]
             
             font = pygame.font.Font(None, 28)
@@ -869,6 +887,23 @@ class Game:
         if self.sound_enabled and sound_name in self.sounds and self.sounds[sound_name]:
             self.sounds[sound_name].set_volume(self.sound_volume)
             self.sounds[sound_name].play()
+
+    def play_background_music(self, filename):
+        """Charge et joue la musique de fond en boucle"""
+        if not self.music_enabled:
+            return
+            
+        try:
+            music_path = os.path.join('src', 'assets', 'music', filename)
+            pygame.mixer.music.load(music_path)
+            pygame.mixer.music.set_volume(self.music_volume)
+            pygame.mixer.music.play(-1)  # -1 indique de jouer en boucle indéfiniment
+        except Exception as e:
+            print(f"Impossible de charger ou jouer la musique: {filename}. Erreur: {e}")
+    
+    def stop_background_music(self):
+        """Arrête la musique de fond en cours"""
+        pygame.mixer.music.stop()
 
     def load_monster_sprites(self):
         """Charge les sprites pour chaque type de monstre"""

@@ -83,6 +83,7 @@ python main.py
 - **M** : Afficher/masquer les zones d'effet des monstres
 - **G** : Afficher/masquer la grille
 - **T** : Changer l'accélération du temps (1x, 2x, 4x, 8x)
+- **P** : Couper/activer la musique de fond
 
 3. Mécaniques de jeu :
 - Placez des tours pour protéger votre village
