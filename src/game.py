@@ -74,6 +74,7 @@ class Game:
         self.game_start_time = 0
         self.monsters = []
         self.show_debug = False
+        self.show_speed_debug = False  # Nouveau flag pour le debug de vitesse
         self.time_acceleration_index = 0
         self.time_accelerated = False
         self.village_health = VILLAGE_MAX_HEALTH
@@ -89,7 +90,7 @@ class Game:
         
         # Chargement et préparation de l'image de terrain
         try:
-            self.terrain_image = pygame.image.load("assets/terrain.png").convert_gray()
+            self.terrain_image = pygame.image.load("assets/speedmask.png").convert_gray()
             # Mise à l'échelle si nécessaire pour correspondre à WORLD_SIZE
             if self.terrain_image.get_width() != WORLD_SIZE or self.terrain_image.get_height() != WORLD_SIZE:
                 self.terrain_image = pygame.transform.scale(self.terrain_image, (WORLD_SIZE, WORLD_SIZE))
@@ -301,6 +302,8 @@ class Game:
                     self.show_ranges = not self.show_ranges
                 elif event.key == pygame.K_d:  # Touche D pour afficher/masquer le debug
                     self.show_debug = not self.show_debug
+                elif event.key == pygame.K_s:  # Touche S pour le debug de vitesse
+                    self.show_speed_debug = not self.show_speed_debug
                 elif event.key == pygame.K_n:  # Touche N pour afficher/masquer les noms
                     self.show_names = not self.show_names
                 elif event.key == pygame.K_m:  # Touche M pour afficher/masquer les zones d'effet des monstres
@@ -533,6 +536,15 @@ class Game:
                     )
                     
                     self.screen.blit(debug_surface, (0, 0))
+                
+                if self.show_speed_debug and monster.is_visible(self.village_x, self.village_y, self.towers):
+                    screen_x, screen_y = self.world_to_screen(monster.x, monster.y)
+                    multiplier = self.get_terrain_speed_multiplier(monster.x, monster.y)
+                    current_speed = monster.speed * multiplier
+                    debug_text = f"Speed: {current_speed:.1f} ({multiplier:.2f}x)"
+                    font = pygame.font.Font(None, 20)
+                    text_surface = font.render(debug_text, True, (255, 255, 0))
+                    self.screen.blit(text_surface, (screen_x + 20, screen_y - 20))
         
         # Dessiner les projectiles
         for tower in self.towers:
@@ -679,6 +691,29 @@ class Game:
             game_over_text = font_big.render("GAME OVER", True, (255, 0, 0))
             text_rect = game_over_text.get_rect(center=(WINDOW_WIDTH/2, WINDOW_HEIGHT/2))
             self.screen.blit(game_over_text, text_rect)
+        
+        # Afficher l'image du terrain en mode debug
+        if self.show_speed_debug:
+            # Créer une surface pour l'overlay du terrain
+            terrain_surface = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA)
+            
+            # Dessiner la portion visible du terrain
+            visible_rect = pygame.Rect(
+                int(self.camera_x - WINDOW_WIDTH/(2*self.zoom)),
+                int(self.camera_y - WINDOW_HEIGHT/(2*self.zoom)),
+                int(WINDOW_WIDTH/self.zoom),
+                int(WINDOW_HEIGHT/self.zoom)
+            )
+            
+            for x in range(visible_rect.left, visible_rect.right, 10):
+                for y in range(visible_rect.top, visible_rect.bottom, 10):
+                    multiplier = self.get_terrain_speed_multiplier(x, y)
+                    color_value = int(255 * multiplier)
+                    screen_x, screen_y = self.world_to_screen(x, y)
+                    pygame.draw.circle(terrain_surface, (color_value, color_value, color_value, 64),
+                                     (int(screen_x), int(screen_y)), 5)
+            
+            self.screen.blit(terrain_surface, (0, 0))
         
         pygame.display.flip()
 
