@@ -407,6 +407,11 @@ class Game:
                         self.stop_voice()
                 elif event.key == pygame.K_F11:  # Touche F11 pour basculer en mode plein écran
                     self.toggle_fullscreen()
+                    # recalculate WINDOW_WIDTH and WINDOW_HEIGHT
+                    WINDOW_WIDTH = pygame.display.get_surface().get_width()
+                    WINDOW_HEIGHT = pygame.display.get_surface().get_height()
+                    self.current_width = WINDOW_WIDTH
+                    self.current_height = WINDOW_HEIGHT
                 elif event.key == pygame.K_l:  # Touche L pour afficher/masquer le leaderboard
                     self.show_leaderboard = not self.show_leaderboard
                 elif event.key == pygame.K_SPACE:  # Touche ESPACE pour recommencer après un game over
