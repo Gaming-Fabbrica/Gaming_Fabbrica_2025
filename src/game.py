@@ -111,6 +111,9 @@ class Game:
         
         # Charger la sauvegarde si elle existe
         self.load_map()
+        
+        # Initialisation des sprites des monstres
+        self.monster_sprites = self.load_monster_sprites()
 
     def world_to_screen(self, x, y):
         """Convertit les coordonnées du monde en coordonnées écran"""
@@ -857,5 +860,56 @@ class Game:
         if self.sound_enabled and sound_name in self.sounds and self.sounds[sound_name]:
             self.sounds[sound_name].set_volume(self.sound_volume)
             self.sounds[sound_name].play()
+
+    def load_monster_sprites(self):
+        """Charge les sprites pour chaque type de monstre"""
+        sprites = {}
+        sprite_dir = os.path.join('src', 'assets', 'monsters')
+        
+        # Vérifier si le dossier existe
+        if not os.path.exists(sprite_dir):
+            os.makedirs(sprite_dir)
+            print(f"Dossier créé: {sprite_dir}")
+            print("Veuillez y ajouter des sprites pour les monstres.")
+        
+        # Charger les sprites pour chaque type de monstre
+        for monster_type in MonsterType:
+            sprite_path = os.path.join(sprite_dir, f"{monster_type.name.lower()}.png")
+            try:
+                sprite = pygame.image.load(sprite_path).convert_alpha()
+                sprites[monster_type] = sprite
+            except:
+                # Créer un sprite par défaut pour ce type de monstre
+                print(f"Sprite non trouvé pour {monster_type.name}, utilisation d'un sprite par défaut")
+                default_sprite = pygame.Surface((MONSTER_SIZE, MONSTER_SIZE), pygame.SRCALPHA)
+                
+                # Dessiner une forme simple comme sprite par défaut (cercle coloré)
+                if monster_type == MonsterType.SKELETON:
+                    color = (200, 200, 200)  # Gris clair pour les squelettes
+                elif monster_type == MonsterType.WOLF:
+                    color = (100, 100, 150)  # Bleu-gris pour les loups
+                elif monster_type == MonsterType.EEL:
+                    color = (0, 100, 100)    # Cyan foncé pour les murènes
+                elif monster_type == MonsterType.GHOST:
+                    color = (200, 200, 255)  # Bleu clair pour les fantômes
+                elif monster_type == MonsterType.FIRE_SKELETON:
+                    color = (255, 100, 0)    # Orange pour les squelettes de feu
+                elif monster_type == MonsterType.WITCH:
+                    color = (128, 0, 128)    # Violet pour les sorcières
+                elif monster_type == MonsterType.KAMIKAZE:
+                    color = (255, 0, 0)      # Rouge pour les kamikazes
+                elif monster_type == MonsterType.GIANT_WOLF:
+                    color = (50, 50, 150)    # Bleu foncé pour les loups géants
+                elif monster_type == MonsterType.DRAGON:
+                    color = (150, 0, 0)      # Rouge foncé pour les dragons
+                else:
+                    color = (100, 100, 100)  # Gris par défaut
+                    
+                pygame.draw.circle(default_sprite, color, 
+                                (MONSTER_SIZE//2, MONSTER_SIZE//2), 
+                                MONSTER_SIZE//2)
+                sprites[monster_type] = default_sprite
+        
+        return sprites
 
 
