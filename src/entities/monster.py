@@ -31,6 +31,7 @@ class Monster:
             'light_fear': 70,
             'color': (150, 150, 150),  # Gris
             'group_factor': 80,  # Apparaissent très groupés (en hordes)
+            'size': 1,
         },
         MonsterType.WOLF: {
             'max_health': 150,
@@ -41,6 +42,7 @@ class Monster:
             'light_fear': 60,
             'color': (139, 69, 19),  # Marron
             'group_factor': 70,  # Meutes de loups
+            'size': 1,
         },
         MonsterType.MORAY: {
             'max_health': 200,
@@ -53,6 +55,7 @@ class Monster:
             'group_factor': 40,  # Plutôt solitaires
             'attack_range': 100,  # Distance de tir
             'projectile_speed': 300,
+            'size': 1,
         },
         MonsterType.VARAN: {
             'max_health': 250,
@@ -63,6 +66,7 @@ class Monster:
             'light_fear': 50,
             'color': (0, 100, 0),  # Vert foncé
             'group_factor': 50,  # Groupes moyens
+            'size': 1,
         },
         MonsterType.SMALL_SPIRIT: {
             'max_health': 80,
@@ -73,6 +77,7 @@ class Monster:
             'light_fear': 90,
             'color': (220, 220, 255),  # Blanc bleuté
             'group_factor': 90,  # Très groupés (nuées d'esprits)
+            'size': 1,
         },
         MonsterType.FIRE_SKELETON: {
             'max_health': 250,
@@ -83,6 +88,7 @@ class Monster:
             'light_fear': 40,
             'color': (255, 69, 0),  # Orange feu
             'group_factor': 60,  # Groupes moyens
+            'size': 1,
         },
         MonsterType.WITCH: {
             'max_health': 300,
@@ -93,6 +99,7 @@ class Monster:
             'light_fear': 30,
             'color': (138, 43, 226),  # Violet
             'group_factor': 20,  # Très solitaires
+            'size': 1,
         },
         MonsterType.KAMIKAZE: {
             'max_health': 100,
@@ -103,6 +110,7 @@ class Monster:
             'light_fear': 20,
             'color': (255, 0, 0),  # Rouge vif
             'group_factor': 50,  # Groupes moyens
+            'size': 1,
         },
         MonsterType.GIANT_WOLF: {
             'max_health': 400,
@@ -113,6 +121,7 @@ class Monster:
             'light_fear': 25,
             'color': (101, 67, 33),  # Marron foncé
             'group_factor': 30,  # Petits groupes
+            'size': 1,
         },
         MonsterType.GIANT_SKELETON: {
             'max_health': 500,
@@ -123,6 +132,7 @@ class Monster:
             'light_fear': 20,
             'color': (169, 169, 169),  # Gris foncé
             'group_factor': 40,  # Groupes moyens
+            'size': 1,
         },
         MonsterType.ROYAL_MORAY: {
             'max_health': 600,
@@ -133,6 +143,7 @@ class Monster:
             'light_fear': 15,
             'color': (0, 0, 139),  # Bleu foncé
             'group_factor': 10,  # Très solitaire
+            'size': 1,
         },
         MonsterType.DRAGON: {
             'max_health': 1000,
@@ -145,6 +156,7 @@ class Monster:
             'group_factor': 5,  # Extrêmement solitaire
             'attack_range': 150,
             'projectile_speed': 400,
+            'size': 3,
         }
     }
 
@@ -167,6 +179,7 @@ class Monster:
         self.attack_speed = stats['attack_speed']
         self.light_fear = stats['light_fear']
         self.color = stats['color']
+        self.size = stats['size']
         self.direction = initial_direction
         self.target_direction = initial_direction
         self.rotation_speed = math.pi  # Vitesse de rotation en radians par seconde
@@ -415,7 +428,7 @@ class Monster:
         points = self.calculate_triangle_points(screen_x, screen_y, zoom)
         pygame.draw.polygon(screen, self.color, points)
 
-        screen.blit(pygame.transform.scale(self.game.monster_sprites[self.monster_type], (int(MONSTER_SIZE * zoom), int(MONSTER_SIZE * zoom))), (screen_x - MONSTER_SIZE*zoom/2, screen_y - MONSTER_SIZE*zoom/2))
+        screen.blit(pygame.transform.scale(self.game.monster_sprites[self.monster_type], (int(MONSTER_SIZE * zoom * self.size), int(MONSTER_SIZE * zoom * self.size))), (screen_x - MONSTER_SIZE*zoom * self.size/2, screen_y - MONSTER_SIZE*zoom * self.size/2))
         
         # Dessiner la barre de vie
         self.draw_health_bar(screen, screen_x, screen_y, zoom)
