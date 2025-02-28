@@ -106,7 +106,10 @@ class Game:
 
         self.background = pygame.image.load('src/assets/background.png').convert()
 
-        self.tower = pygame.image.load('src/assets/tower.png').convert_alpha()
+        self.tower_sprites = {}
+        self.tower_sprites[TowerType.WEAK] = pygame.image.load('src/assets/tower_weak.png').convert_alpha()
+        self.tower_sprites[TowerType.MEDIUM] = pygame.image.load('src/assets/tower_medium.png').convert_alpha()
+        self.tower_sprites[TowerType.POWERFUL] = pygame.image.load('src/assets/tower_powerful.png').convert_alpha()
 
         # Chargement et préparation de l'image de terrain
         try:
@@ -535,7 +538,7 @@ class Game:
                              (int(screen_x), int(screen_y)), 
                              int(TOWER_SIZE/2 * self.zoom))
             
-            self.screen.blit(pygame.transform.scale(self.tower, (int(TOWER_SIZE * self.zoom), int(TOWER_SIZE * self.zoom))), (screen_x - TOWER_SIZE/2*self.zoom, screen_y - TOWER_SIZE/2*self.zoom))
+            self.screen.blit(pygame.transform.scale(self.tower_sprites[tower.tower_type], (int(TOWER_SIZE * self.zoom), int(TOWER_SIZE * self.zoom))), (screen_x - TOWER_SIZE/2*self.zoom, screen_y - TOWER_SIZE/2*self.zoom))
             
             health_ratio = tower.current_health / tower.max_health
             health_width = TOWER_SIZE * self.zoom
