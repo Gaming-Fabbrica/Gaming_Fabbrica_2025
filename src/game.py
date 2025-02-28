@@ -423,7 +423,13 @@ class Game:
                         self.stop_voice()
                 elif event.key == pygame.K_F11:
                     self.toggle_fullscreen()
-                elif event.key == pygame.K_l and not self.entering_name:
+                    WINDOW_WIDTH = pygame.display.get_surface().get_width()
+                    WINDOW_HEIGHT = pygame.display.get_surface().get_height()
+                    self.current_width = WINDOW_WIDTH
+                    self.current_height = WINDOW_HEIGHT
+
+
+                elif event.key == pygame.K_l:  # Touche L pour afficher/masquer le leaderboard
                     self.show_leaderboard = not self.show_leaderboard
                 elif event.key == pygame.K_SPACE and self.game_mode == GameMode.GAME_OVER and not self.entering_name:
                     self.reset_game()
@@ -618,7 +624,7 @@ class Game:
         self.screen.blit(scaled_background, (background_x, background_y))
         
         # Créer une surface noire pour les lumières (pas transparente)
-        light_surface = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
+        light_surface = pygame.Surface((WORLD_SIZE, WORLD_SIZE))
         light_surface.fill((0, 0, 0))  # Surface noire pour le blending additif
         
         # Dessiner la grille
@@ -657,7 +663,7 @@ class Game:
                    GREEN if tower.tower_type == TowerType.MEDIUM else YELLOW
             
             if self.show_ranges:
-                range_surface = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA)
+                range_surface = pygame.Surface((WORLD_SIZE, WORLD_SIZE), pygame.SRCALPHA)
                 vision_radius = int(tower.vision_range * self.zoom)
                 pygame.draw.circle(range_surface, (*color, RANGE_ALPHA//2),
                                  (int(screen_x), int(screen_y)), vision_radius)
@@ -688,7 +694,7 @@ class Game:
 
             # Ajouter la lumière de la tour sur la surface de lumière
             if self.game_mode == GameMode.PLAY:
-                pygame.draw.circle(light_surface, (20, 20, 20),
+                pygame.draw.circle(light_surface, (30, 30, 30),
                                  (int(screen_x), int(screen_y)),
                                  int(tower.vision_range * self.zoom))
         

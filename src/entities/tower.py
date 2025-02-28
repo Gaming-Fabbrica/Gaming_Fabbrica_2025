@@ -27,8 +27,8 @@ class Tower:
             self.damage = 30
             self.max_health = 200  # Vie moyenne
         else:  # WEAK
-            self.vision_range = 100
-            self.attack_range = 80
+            self.vision_range = 120
+            self.attack_range = 100
             self.attack_speed = 1
             self.damage = 15
             self.max_health = 100  # Vie faible
