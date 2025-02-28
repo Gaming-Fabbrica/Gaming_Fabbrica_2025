@@ -33,8 +33,18 @@ class Game:
         # Initialisation du système audio
         pygame.mixer.init()
         
+        # Configuration des sons
+        self.sound_volume = 0.5
+        self.sound_enabled = True
+        self.music_enabled = True
+        self.music_volume = 0.3  # Volume plus bas que les effets sonores
+        self.voices_enabled = True  # Option pour activer/désactiver les voix
+        
         # Chargement des sons
         self.load_sounds()
+        
+        # Jouer la voix d'introduction
+        self.play_voice('intro_voice.mp3')
         
         self.game_mode = GameMode.EDIT
         self.towers = []
@@ -118,13 +128,6 @@ class Game:
         # Initialisation des sprites des monstres
         self.monster_sprites = self.load_monster_sprites()
 
-        self.sound_volume = 0.5
-        self.sound_enabled = True
-        
-        # Configuration de la musique de fond
-        self.music_enabled = True
-        self.music_volume = 0.3  # Volume plus bas que les effets sonores
-
     def world_to_screen(self, x, y):
         """Convertit les coordonnées du monde en coordonnées écran"""
         screen_x = (x - self.camera_x) * self.zoom + self.center_x
@@ -171,6 +174,9 @@ class Game:
         self.wave_manager = WaveManager(self.village_x, self.village_y, self)
         self.game_start_time = time.time()
         self.monsters = []
+        
+        # Arrêter les voix en cours
+        self.stop_voice()
         
         # Recentrer la caméra sur le village
         self.camera_x = self.village_x
@@ -297,6 +303,7 @@ class Game:
                         for tower_info in self.available_towers:
                             if tower_info['type'] == self.selected_tower.tower_type:
                                 tower_info['count'] += 1
+                        self.play_sound('tower_destroyed')  # Jouer le son de destruction
                         self.selected_tower = None
             
             elif event.type == pygame.MOUSEBUTTONUP:
@@ -344,6 +351,8 @@ class Game:
                         self.play_background_music('background_music.mp3')
                     else:
                         self.stop_background_music()
+                elif event.key == pygame.K_v:  # Touche V pour couper/activer les voix
+                    self.voices_enabled = not self.voices_enabled
         
         # Déplacement de la carte par drag (disponible dans tous les modes)
         if self.dragging_map and self.last_mouse_pos:
@@ -370,9 +379,14 @@ class Game:
                     break
             
             if is_in_valid_zone and self.light_power > 0:
+                # Jouer le son de la lumière seulement quand elle est activée
+                if not self.light_active:
+                    self.play_sound('light_on')
                 self.light_active = True
                 self.light_position = mouse_world_pos
             else:
+                if self.light_active:  # Ajouter cette condition pour jouer le son uniquement quand on désactive la lumière
+                    self.play_sound('light_off')
                 self.light_active = False
                 self.light_position = None
         else:
@@ -400,9 +414,17 @@ class Game:
                 targets = tower.find_targets(self.monsters)
                 tower.attack(targets, delta_time)
                 tower.update_projectiles(delta_time)
+                # Jouer le son quand la tour tire
+                if tower.is_firing:
+                    self.play_sound('tower_fire')
             
             # Mise à jour des monstres et nettoyage des morts
+            dead_monsters = [monster for monster in self.monsters if monster.is_dead]
             self.monsters = [monster for monster in self.monsters if not monster.is_dead]
+            
+            # Jouer le son pour chaque monstre mort
+            for dead_monster in dead_monsters:
+                self.play_sound('monster_death')
             
             for monster in self.monsters:
                 monster.update(self.towers, self.village_x, self.village_y, delta_time,
@@ -420,6 +442,7 @@ class Game:
                             self.towers.remove(monster.current_target)
                             monster.current_target = None
                             monster.current_target_type = None
+                            self.play_sound('tower_destroyed')  # Jouer le son de destruction
                 
                 elif monster.current_target_type == 'village':
                     dist = math.sqrt((self.village_x - monster.x)**2 + 
@@ -430,6 +453,7 @@ class Game:
                         self.village_health -= monster.current_damage * delta_time * monster.attack_speed
                         if self.village_health <= 0:
                             self.game_over = True
+                            self.play_sound('game_over')  # Jouer le son de game over
 
             # Mise à jour des explosions
             self.explosions = [exp for exp in self.explosions if not exp.finished]
@@ -728,7 +752,7 @@ class Game:
         pygame.draw.rect(self.screen, (0, 255, 0) if health_ratio > 0.5 else 
                                      (255, 255, 0) if health_ratio > 0.25 else 
                                      (255, 0, 0),
-                        (health_x, health_y, health_width * health_ratio, health_height))
+                            (health_x, health_y, health_width * health_ratio, health_height))
         
         # Game Over
         if self.game_over:
@@ -776,14 +800,16 @@ class Game:
                 "M : Afficher/masquer les zones d'effet des monstres",
                 "G : Afficher/masquer la grille",
                 "T : Changer l'accélération du temps",
-                "P : Couper/activer la musique de fond",
+                "P : Couper/activer la musique",
+                "V : Couper/activer les voix",
                 "",
                 "Commandes souris:",
                 "Clic gauche : Placer/déplacer les tours (mode EDIT)",
                 "Clic droit : Supprimer une tour (mode EDIT) / Activer la lumière (mode PLAY)",
                 "Clic milieu/molette : Déplacer la carte",
                 "Molette haut/bas : Zoomer/dézoomer",
-                "P : Couper/activer la musique"
+                "P : Couper/activer la musique",
+                "V : Couper/activer les voix"
             ]
             
             font = pygame.font.Font(None, 28)
@@ -861,12 +887,34 @@ class Game:
 
     def load_sounds(self):
         """Charge tous les effets sonores du jeu"""
+        # Vérifier que les dossiers de sons existent, sinon les créer
+        sounds_dir = os.path.join('src', 'assets', 'sounds')
+        voices_dir = os.path.join('src', 'assets', 'voices')
+        music_dir = os.path.join('src', 'assets', 'music')
+        
+        for directory in [sounds_dir, voices_dir, music_dir]:
+            if not os.path.exists(directory):
+                os.makedirs(directory)
+                print(f"Dossier créé: {directory}")
+        
         self.sounds = {
             'tower_fire': self.load_sound('tower_fire.wav'),
             'monster_death': self.load_sound('monster_death.wav'),
             'tower_destroyed': self.load_sound('tower_destroyed.wav'),
-            'light_effect': self.load_sound('light_effect.wav')
+            'light_on': self.load_sound('light_on.wav'),
+            'light_off': self.load_sound('light_off.wav'),
+            'game_over': self.load_sound('game_over.wav')
         }
+        
+        # Chargement des fichiers vocaux
+        self.voice_sounds = {}
+        voice_files = [
+            'intro_voice.mp3'
+            # Ajoutez d'autres fichiers vocaux ici si nécessaire
+        ]
+        
+        for voice_file in voice_files:
+            self.voice_sounds[voice_file] = self.load_voice(voice_file)
         
         # Volume des effets sonores (entre 0.0 et 1.0)
         self.sound_volume = 0.5
@@ -876,17 +924,63 @@ class Game:
         """Charge un fichier son avec gestion d'erreur"""
         try:
             sound_path = os.path.join('src', 'assets', 'sounds', filename)
+            
+            # Vérifier si le fichier existe
+            if not os.path.exists(sound_path):
+                print(f"Fichier son manquant: {filename}. Création d'un son vide...")
+                # Créer un son vide si le fichier n'existe pas
+                dummy_sound = pygame.mixer.Sound(buffer=bytearray([0, 0, 0, 0]))
+                return dummy_sound
+                
             sound = pygame.mixer.Sound(sound_path)
             return sound
-        except:
-            print(f"Impossible de charger le son: {filename}")
-            return None
+        except Exception as e:
+            print(f"Impossible de charger le son: {filename}. Erreur: {e}")
+            # Créer un son vide en cas d'erreur
+            try:
+                dummy_sound = pygame.mixer.Sound(buffer=bytearray([0, 0, 0, 0]))
+                return dummy_sound
+            except:
+                print("Impossible de créer un son de remplacement.")
+                return None
+            
+    def load_voice(self, filename):
+        """Charge un fichier vocal avec gestion d'erreur"""
+        try:
+            voice_path = os.path.join('src', 'assets', 'voices', filename)
+            
+            # Vérifier si le fichier existe
+            if not os.path.exists(voice_path):
+                print(f"Fichier vocal manquant: {filename}. Création d'un son vide...")
+                # Vérifier si le dossier existe, sinon le créer
+                voice_dir = os.path.join('src', 'assets', 'voices')
+                if not os.path.exists(voice_dir):
+                    os.makedirs(voice_dir)
+                    print(f"Dossier créé: {voice_dir}")
+                
+                # Créer un son vide
+                dummy_sound = pygame.mixer.Sound(buffer=bytearray([0, 0, 0, 0]))
+                return dummy_sound
+                
+            voice = pygame.mixer.Sound(voice_path)
+            return voice
+        except Exception as e:
+            print(f"Impossible de charger le fichier vocal: {filename}. Erreur: {e}")
+            # Créer un son vide en cas d'erreur
+            try:
+                dummy_sound = pygame.mixer.Sound(buffer=bytearray([0, 0, 0, 0]))
+                return dummy_sound
+            except:
+                print("Impossible de créer un son vocal de remplacement.")
+                return None
 
     def play_sound(self, sound_name):
         """Joue un son s'il est disponible et que le son est activé"""
         if self.sound_enabled and sound_name in self.sounds and self.sounds[sound_name]:
-            self.sounds[sound_name].set_volume(self.sound_volume)
-            self.sounds[sound_name].play()
+            # Vérifier si le son est déjà en cours de lecture
+            if self.sounds[sound_name].get_num_channels() == 0:
+                self.sounds[sound_name].set_volume(self.sound_volume)
+                self.sounds[sound_name].play()
 
     def play_background_music(self, filename):
         """Charge et joue la musique de fond en boucle"""
@@ -901,9 +995,38 @@ class Game:
         except Exception as e:
             print(f"Impossible de charger ou jouer la musique: {filename}. Erreur: {e}")
     
+    def play_voice(self, filename):
+        """Joue un fichier vocal une seule fois"""
+        if not self.sound_enabled or not self.voices_enabled:
+            return
+            
+        # Vérifier si le son vocal est préchargé
+        if filename in self.voice_sounds and self.voice_sounds[filename]:
+            # Vérifier si le son est déjà en cours de lecture
+            if self.voice_sounds[filename].get_num_channels() == 0:
+                self.voice_sounds[filename].set_volume(self.sound_volume)
+                self.voice_sounds[filename].play()
+            return
+            
+        # Sinon, essayer de charger et jouer à la volée (fallback)
+        try:
+            voice_path = os.path.join('src', 'assets', 'voices', filename)
+            voice = pygame.mixer.Sound(voice_path)
+            voice.set_volume(self.sound_volume)
+            voice.play()
+        except Exception as e:
+            print(f"Impossible de charger ou jouer le fichier vocal: {filename}. Erreur: {e}")
+    
     def stop_background_music(self):
         """Arrête la musique de fond en cours"""
         pygame.mixer.music.stop()
+
+    def stop_voice(self):
+        """Arrête toutes les voix en cours de lecture"""
+        # Arrêter toutes les voix préchargées
+        for voice_name, voice in self.voice_sounds.items():
+            if voice and voice.get_num_channels() > 0:
+                voice.stop()
 
     def load_monster_sprites(self):
         """Charge les sprites pour chaque type de monstre"""

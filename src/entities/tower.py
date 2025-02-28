@@ -39,6 +39,7 @@ class Tower:
         self.projectiles = []  # Liste des projectiles actifs
         self.max_targets = 3 if tower_type == TowerType.WEAK else 1
         self.is_dead = False
+        self.is_firing = False  # Nouvel attribut pour indiquer si la tour est en train de tirer
 
     def take_damage(self, amount):
         """Applique les dégâts à la tour"""
@@ -81,6 +82,9 @@ class Tower:
         return targets
 
     def attack(self, monsters, delta_time):
+        # Réinitialiser l'état de tir
+        self.is_firing = False
+        
         if self.attack_cooldown > 0:
             self.attack_cooldown -= delta_time
             return
@@ -93,6 +97,7 @@ class Tower:
                 self.projectiles.append(
                     Projectile(self.x, self.y, monster, self.damage, color)
                 )
+                self.is_firing = True  # La tour est en train de tirer
         if monsters:
             self.attack_cooldown = 1 / self.attack_speed
 

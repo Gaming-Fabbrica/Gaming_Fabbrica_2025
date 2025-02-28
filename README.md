@@ -84,6 +84,7 @@ python main.py
 - **G** : Afficher/masquer la grille
 - **T** : Changer l'accélération du temps (1x, 2x, 4x, 8x)
 - **P** : Couper/activer la musique de fond
+- **V** : Couper/activer les voix
 
 3. Mécaniques de jeu :
 - Placez des tours pour protéger votre village
