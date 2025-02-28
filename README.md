@@ -71,11 +71,17 @@ python main.py
 ```
 
 2. Contrôles :
-- **Clic gauche** : Placer une tour
-- **Clic droit** : Activer la lumière
+- **Clic gauche** : Placer/déplacer une tour (mode EDIT), déplacer la carte (mode PLAY)
+- **Clic droit** : Supprimer une tour (mode EDIT), activer la lumière (mode PLAY)
+- **Clic milieu/glisser** : Déplacer la carte
 - **Molette souris** : Zoom avant/arrière
-- **Échap** : Menu pause
-- **Espace** : Démarrer la partie
+- **H** : Afficher/masquer l'aide du jeu
+- **R** : Afficher/masquer les portées des tours
+- **D** : Afficher/masquer les informations de débogage
+- **S** : Afficher/masquer le débogage de vitesse et terrain
+- **N** : Afficher/masquer les noms des entités
+- **M** : Afficher/masquer les zones d'effet des monstres
+- **T** : Changer l'accélération du temps (1x, 2x, 4x, 8x)
 
 3. Mécaniques de jeu :
 - Placez des tours pour protéger votre village
