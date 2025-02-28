@@ -52,10 +52,10 @@ LIGHT_POWER_BAR_HEIGHT = 15  # Hauteur de la barre de puissance
 LIGHT_RADIUS = 200    # Rayon d'effet de la lumière
 
 # Monster Behavior
-MONSTER_FEAR_DURATION = 3.0  # Durée pendant laquelle le monstre fuit (en secondes)
-MAX_FLEE_TIME = 15.0  # Temps maximum de fuite en secondes
-FLEE_DISTANCE_MIN = 200  # Distance minimale de fuite
-FLEE_DISTANCE_MAX = 400  # Distance maximale de fuite
+MONSTER_FEAR_DURATION = 5.0  # Durée pendant laquelle le monstre fuit (en secondes)
+MAX_FLEE_TIME = 20.0  # Temps maximum de fuite en secondes
+FLEE_DISTANCE_MIN = 300  # Distance minimale de fuite
+FLEE_DISTANCE_MAX = 500  # Distance maximale de fuite
 FLEE_ANGLE_VARIATION = math.pi / 4  # Variation maximale de l'angle de fuite (±45 degrés)
 MAX_VISIBILITY_RANGE = 800  # Distance maximale de visibilité depuis le village
 
