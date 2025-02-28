@@ -677,7 +677,7 @@ class Game:
 
             # Ajouter la lumière de la tour sur la surface de lumière
             if self.game_mode == GameMode.PLAY:
-                pygame.draw.circle(light_surface, (20, 20, 20),
+                pygame.draw.circle(light_surface, (30, 30, 30),
                                  (int(screen_x), int(screen_y)),
                                  int(tower.vision_range * self.zoom))
         
