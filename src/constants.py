@@ -69,4 +69,9 @@ GRAY = (128, 128, 128)
 RED = (255, 0, 0)
 BLUE = (0, 0, 255)
 GREEN = (0, 255, 0)
-YELLOW = (255, 255, 0) 
+YELLOW = (255, 255, 0)
+
+# Couleurs pour le leaderboard
+GOLD = (255, 215, 0)     # Or pour la 1ère place
+SILVER = (192, 192, 192) # Argent pour la 2ème place
+BRONZE = (205, 127, 50)  # Bronze pour la 3ème place 

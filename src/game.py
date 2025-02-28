@@ -22,6 +22,7 @@ from src.constants import *
 from src.enums import GameMode, TowerType, MonsterType
 from src.entities import Tower, Monster, Explosion
 from src.managers import WaveManager, Wave
+from src.score_management import ScoreManager
 
 class Game:
     def __init__(self):
@@ -53,6 +54,14 @@ class Game:
         
         self.game_mode = GameMode.EDIT
         self.towers = []
+        self.projectiles = []
+        
+        # Initialisation du gestionnaire de scores
+        self.score_manager = ScoreManager()
+        self.current_score = 0
+        self.player_name = "Joueur"
+        self.show_leaderboard = False
+        self.game_time = 0.0
         
         # Position du village (centre de la carte)
         self.village_x = WORLD_SIZE // 2
@@ -375,6 +384,12 @@ class Game:
                         self.stop_voice()
                 elif event.key == pygame.K_F11:  # Touche F11 pour basculer en mode plein écran
                     self.toggle_fullscreen()
+                elif event.key == pygame.K_l:  # Touche L pour afficher/masquer le leaderboard
+                    self.show_leaderboard = not self.show_leaderboard
+                elif event.key == pygame.K_SPACE:  # Touche ESPACE pour recommencer après un game over
+                    if self.game_over:
+                        self.reset_game()
+                        self.show_leaderboard = False
         
         # Déplacement de la carte par drag (disponible dans tous les modes)
         if self.dragging_map and self.last_mouse_pos:
@@ -407,18 +422,22 @@ class Game:
                     self.play_sound('light_on')
                 self.light_active = True
                 self.light_position = mouse_world_pos
+                # Forcer la mise à jour de la position de la lumière pour éviter les problèmes
+                print(f"Lumière activée à: {mouse_world_pos}, puissance: {self.light_power}")
             else:
                 # Si on était actif mais qu'on ne peut plus l'être (soit hors zone, soit puissance épuisée, soit en délai)
                 if self.light_active:
                     self.play_sound('light_off')
                     self.light_active = False
                     self.light_position = None
+                    print("Lumière désactivée: hors zone, puissance épuisée ou en délai")
         else:
             # Si on relâche le clic droit ou si on n'est pas en mode PLAY
             if self.light_active:
                 self.play_sound('light_off')
-            self.light_active = False
-            self.light_position = None
+                self.light_active = False
+                self.light_position = None
+                print("Lumière désactivée: clic relâché ou mode non-play")
         
         return True
 
@@ -426,6 +445,7 @@ class Game:
         """Mise à jour de la logique du jeu"""
         if self.game_mode == GameMode.PLAY and not self.game_over:
             current_time = time.time() - self.game_start_time
+            self.game_time = current_time
             
             # Calculer le delta_time en fonction de l'accélération
             base_delta = 1 / FPS
@@ -444,6 +464,8 @@ class Game:
                 # Jouer le son quand la tour tire
                 if tower.is_firing:
                     self.play_sound('tower_fire')
+                    # Ajouter des points pour chaque tir de tour
+                    self.current_score += 1
             
             # Mise à jour des monstres et nettoyage des morts
             dead_monsters = [monster for monster in self.monsters if monster.is_dead]
@@ -452,11 +474,37 @@ class Game:
             # Jouer le son pour chaque monstre mort
             for dead_monster in dead_monsters:
                 self.play_sound('monster_death')
+                # Ajouter des points pour chaque monstre tué en fonction de sa difficulté
+                score_gain = 0
+                if dead_monster.monster_type == MonsterType.SKELETON:
+                    score_gain = 10
+                elif dead_monster.monster_type == MonsterType.WOLF:
+                    score_gain = 15
+                elif dead_monster.monster_type == MonsterType.MORAY:
+                    score_gain = 20
+                elif dead_monster.monster_type == MonsterType.FIRE_SKELETON:
+                    score_gain = 25
+                elif dead_monster.monster_type == MonsterType.SMALL_SPIRIT:
+                    score_gain = 30
+                elif dead_monster.monster_type == MonsterType.WITCH:
+                    score_gain = 40
+                elif dead_monster.monster_type == MonsterType.KAMIKAZE:
+                    score_gain = 35
+                elif dead_monster.monster_type == MonsterType.GIANT_WOLF:
+                    score_gain = 50
+                elif dead_monster.monster_type == MonsterType.DRAGON:
+                    score_gain = 100
+                else:
+                    score_gain = 10
+                
+                self.current_score += score_gain
             
             for monster in self.monsters:
                 # Ne passer la lumière active aux monstres que si sa puissance est supérieure à 0
                 light_active_for_monster = self.light_active and self.light_power > 0
                 
+                # Ne pas ajuster la puissance de la lumière en fonction du zoom pour les monstres
+                # Le zoom ne devrait affecter que le rendu visuel, pas la logique du jeu
                 monster.update(self.towers, self.village_x, self.village_y, delta_time,
                              self.light_position, light_active_for_monster, self.light_power)
                 
@@ -473,6 +521,8 @@ class Game:
                             monster.current_target = None
                             monster.current_target_type = None
                             self.play_sound('tower_destroyed')  # Jouer le son de destruction
+                            # Perdre des points quand une tour est détruite
+                            self.current_score = max(0, self.current_score - 50)
                 
                 elif monster.current_target_type == 'village':
                     dist = math.sqrt((self.village_x - monster.x)**2 + 
@@ -481,9 +531,14 @@ class Game:
                     if dist < VILLAGE_SIZE:  # Si le monstre est assez proche du village
                         # Infliger des dégâts au village
                         self.village_health -= monster.current_damage * delta_time * monster.attack_speed
+                        # Perdre des points quand le village subit des dégâts
+                        self.current_score = max(0, self.current_score - int(monster.current_damage * delta_time * monster.attack_speed))
+                        
                         if self.village_health <= 0:
                             self.game_over = True
                             self.play_sound('game_over')  # Jouer le son de game over
+                            # Gérer le score final et vérifier s'il s'agit d'un high score
+                            self.handle_game_over()
 
             # Mise à jour des explosions
             self.explosions = [exp for exp in self.explosions if not exp.finished]
@@ -545,14 +600,14 @@ class Game:
                 start_pos = self.world_to_screen(x, grid_start_y)
                 end_pos = self.world_to_screen(x, grid_end_y)
                 pygame.draw.line(self.screen, GRAY, 
-                                (int(start_pos[0]), int(start_pos[1])), 
-                                (int(end_pos[0]), int(end_pos[1])))
+                               (int(start_pos[0]), int(start_pos[1])), 
+                               (int(end_pos[0]), int(end_pos[1])))
             for y in range(grid_start_y, grid_end_y + GRID_SIZE, GRID_SIZE):
                 start_pos = self.world_to_screen(grid_start_x, y)
                 end_pos = self.world_to_screen(grid_end_x, y)
                 pygame.draw.line(self.screen, GRAY, 
-                                (int(start_pos[0]), int(start_pos[1])), 
-                                (int(end_pos[0]), int(end_pos[1])))
+                               (int(start_pos[0]), int(start_pos[1])), 
+                               (int(end_pos[0]), int(end_pos[1])))
         
         # Dessiner le village
         village_screen_x, village_screen_y = self.world_to_screen(self.village_x, self.village_y)
@@ -574,10 +629,6 @@ class Game:
                 pygame.draw.circle(range_surface, (*color, RANGE_ALPHA),
                                  (int(screen_x), int(screen_y)), attack_radius)
                 self.screen.blit(range_surface, (0, 0))
-            
-            # pygame.draw.circle(self.screen, color, 
-            #                  (int(screen_x), int(screen_y)), 
-            #                  int(TOWER_SIZE/2 * self.zoom))
             
             self.screen.blit(pygame.transform.scale(self.tower_sprites[tower.tower_type], (int(TOWER_SIZE * self.zoom), int(TOWER_SIZE * self.zoom))), (screen_x - TOWER_SIZE/2*self.zoom, screen_y - TOWER_SIZE/2*self.zoom))
             
@@ -672,17 +723,27 @@ class Game:
         if self.game_mode == GameMode.PLAY:
             # Lumière autour du village
             village_screen_x, village_screen_y = self.world_to_screen(self.village_x, self.village_y)
+            village_light_radius = int(LIGHT_MAX_RANGE * self.zoom)
             pygame.draw.circle(light_surface, (30, 30, 30),
                              (int(village_screen_x), int(village_screen_y)),
-                             int(LIGHT_MAX_RANGE * self.zoom))
+                              village_light_radius)
             
             # Lumière active (curseur)
             if self.light_active and self.light_position and self.light_power > 0:
                 light_screen_pos = self.world_to_screen(self.light_position[0], self.light_position[1])
-                intensity = int(40 * (self.light_power / LIGHT_MAX_POWER))
+                intensity = int(60 * (self.light_power / LIGHT_MAX_POWER))  # Augmenter l'intensité
+                # S'assurer que le rayon de la lumière est correctement ajusté par le zoom
+                light_radius = int(LIGHT_RADIUS * self.zoom)
+                # Dessiner un cercle plus lumineux avec une intensité accrue
                 pygame.draw.circle(light_surface, (intensity, intensity, intensity),
                                  (int(light_screen_pos[0]), int(light_screen_pos[1])),
-                                 int(LIGHT_RADIUS * self.zoom))
+                                 light_radius)
+                # Ajouter un second cercle plus petit et plus intense pour un effet de halo
+                inner_radius = int(light_radius * 0.6)
+                inner_intensity = min(255, int(intensity * 1.5))
+                pygame.draw.circle(light_surface, (inner_intensity, inner_intensity, inner_intensity),
+                                 (int(light_screen_pos[0]), int(light_screen_pos[1])),
+                                 inner_radius)
             
             # Appliquer la surface de lumière avec le blending additif
             self.screen.blit(light_surface, (0, 0), special_flags=pygame.BLEND_RGB_ADD)
@@ -706,18 +767,40 @@ class Game:
             # N'afficher l'indicateur de lumière que si la zone est valide ET que la puissance est > 0
             if is_in_valid_zone and self.light_power > 0:
                 cursor_light = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA)
-                pygame.draw.circle(cursor_light, (255, 255, 200, 30),
+                # Ajuster la taille de l'indicateur en fonction du zoom pour correspondre à la vraie zone d'effet
+                cursor_light_radius = int(LIGHT_RADIUS * self.zoom)
+                
+                # Effet de pulsation basé sur le temps
+                pulse = (math.sin(pygame.time.get_ticks() / 300) + 1) * 0.3 + 0.4  # Valeur entre 0.4 et 1.0
+                
+                # Cercle extérieur pulsant
+                alpha_outer = int(30 * pulse)
+                pygame.draw.circle(cursor_light, (255, 255, 200, alpha_outer),
                                  (self.mouse_x, self.mouse_y),
-                                 int(LIGHT_RADIUS * self.zoom))
-                pygame.draw.circle(cursor_light, (255, 255, 200, 100),
+                                 cursor_light_radius)
+                
+                # Bordure plus visible avec pulsation
+                border_width = max(1, int(3 * self.zoom * pulse))
+                alpha_border = int(150 * pulse)
+                pygame.draw.circle(cursor_light, (255, 255, 200, alpha_border),
                                  (self.mouse_x, self.mouse_y),
-                                 int(LIGHT_RADIUS * self.zoom), 2)
+                                 cursor_light_radius, border_width)
+                
+                # Cercle intérieur pour indiquer l'intensité et la concentration
+                inner_radius = int(cursor_light_radius * 0.3 * (self.light_power / LIGHT_MAX_POWER))
+                pygame.draw.circle(cursor_light, (255, 255, 150, 40),
+                                 (self.mouse_x, self.mouse_y),
+                                 inner_radius)
+                
+                # Appliquer la surface
                 self.screen.blit(cursor_light, (0, 0))
                 
-                font = pygame.font.Font(None, 20)
-                help_text = "Clic droit pour activer la lumière"
-                text_surface = font.render(help_text, True, (255, 255, 200))
-                self.screen.blit(text_surface, (self.mouse_x + 20, self.mouse_y + 20))
+                # Afficher texte d'aide seulement si non cooldown
+                if not self.light_in_cooldown:
+                    font = pygame.font.Font(None, 20)
+                    help_text = "Clic droit pour activer la lumière"
+                    text_surface = font.render(help_text, True, (255, 255, 200))
+                    self.screen.blit(text_surface, (self.mouse_x + 20, self.mouse_y + 20))
             
             # Barre de puissance de la lumière (toujours affichée mais rouge si vide)
             power_ratio = self.light_power / LIGHT_MAX_POWER
@@ -800,16 +883,8 @@ class Game:
                 pygame.draw.circle(self.screen, WHITE if valid else RED,
                                  (self.mouse_x, self.mouse_y), TOWER_SIZE//2, 2)
         
-        # Affichage du mode et de l'accélération
-        font = pygame.font.Font(None, 36)
-        mode_text = "Mode: " + self.game_mode.name
-        text_surface = font.render(mode_text, True, WHITE)
-        self.screen.blit(text_surface, (10, 10))
-        
-        if self.time_accelerated:
-            speed_text = f"x{TIME_ACCELERATIONS[self.time_acceleration_index]}"
-            text_surface = font.render(speed_text, True, (255, 255, 0))
-            self.screen.blit(text_surface, (self.current_width - 60, 10))
+        # Appeler la méthode draw_ui pour afficher le score et autres informations UI
+        self.draw_ui()
         
         # Barre de vie du village
         health_ratio = max(0, self.village_health / VILLAGE_MAX_HEALTH)
@@ -829,8 +904,26 @@ class Game:
         if self.game_over:
             font_big = pygame.font.Font(None, 74)
             game_over_text = font_big.render("GAME OVER", True, (255, 0, 0))
-            text_rect = game_over_text.get_rect(center=(WINDOW_WIDTH/2, WINDOW_HEIGHT/2))
+            text_rect = game_over_text.get_rect(center=(WINDOW_WIDTH/2, WINDOW_HEIGHT/2 - 100))
             self.screen.blit(game_over_text, text_rect)
+            
+            score_text = font_big.render(f"Score: {self.current_score}", True, (255, 200, 0))
+            score_rect = score_text.get_rect(center=(WINDOW_WIDTH/2, WINDOW_HEIGHT/2 - 30))
+            self.screen.blit(score_text, score_rect)
+            
+            font = pygame.font.Font(None, 36)
+            if self.score_manager.is_high_score(self.current_score):
+                highscore_text = font.render("Nouveau High Score!", True, (0, 255, 0))
+                highscore_rect = highscore_text.get_rect(center=(WINDOW_WIDTH/2, WINDOW_HEIGHT/2 + 30))
+                self.screen.blit(highscore_text, highscore_rect)
+            
+            restart_text = font.render("Appuyez sur ESPACE pour recommencer", True, (200, 200, 200))
+            restart_rect = restart_text.get_rect(center=(WINDOW_WIDTH/2, WINDOW_HEIGHT/2 + 70))
+            self.screen.blit(restart_text, restart_rect)
+            
+            leaderboard_text = font.render("Appuyez sur L pour voir le leaderboard", True, (200, 200, 200))
+            leaderboard_rect = leaderboard_text.get_rect(center=(WINDOW_WIDTH/2, WINDOW_HEIGHT/2 + 110))
+            self.screen.blit(leaderboard_text, leaderboard_rect)
         
         # Afficher l'image du terrain en mode debug
         if self.show_speed_debug:
@@ -851,9 +944,13 @@ class Game:
                     color_value = int(255 * multiplier)
                     screen_x, screen_y = self.world_to_screen(x, y)
                     pygame.draw.circle(terrain_surface, (color_value, color_value, color_value, 64),
-                                     (int(screen_x), int(screen_y)), 5)
+                                    (int(screen_x), int(screen_y)), 5)
             
             self.screen.blit(terrain_surface, (0, 0))
+        
+        # Afficher le leaderboard si nécessaire
+        if self.show_leaderboard:
+            self.draw_leaderboard()
         
         # Affichage de l'aide (après tout le reste pour qu'elle soit au-dessus)
         if self.show_help:
@@ -873,15 +970,14 @@ class Game:
                 "T : Changer l'accélération du temps",
                 "P : Couper/activer la musique",
                 "V : Couper/activer les voix",
+                "L : Afficher le leaderboard",
                 "F11 : Basculer en mode plein écran",
                 "",
                 "Commandes souris:",
                 "Clic gauche : Placer/déplacer les tours (mode EDIT)",
                 "Clic droit : Supprimer une tour sélectionnée (mode EDIT) / Activer la lumière (mode PLAY)",
                 "Clic milieu/molette : Déplacer la carte",
-                "Molette haut/bas : Zoomer/dézoomer",
-                "P : Couper/activer la musique",
-                "V : Couper/activer les voix"
+                "Molette haut/bas : Zoomer/dézoomer"
             ]
             
             font = pygame.font.Font(None, 28)
@@ -1185,5 +1281,152 @@ class Game:
         # Point central de l'écran pour le zoom
         self.center_x = self.current_width // 2
         self.center_y = self.current_height // 2
+
+    def reset_game(self):
+        """Réinitialise le jeu pour une nouvelle partie"""
+        self.game_mode = GameMode.EDIT
+        self.game_over = False
+        self.village_health = VILLAGE_MAX_HEALTH
+        self.towers = []
+        self.monsters = []
+        self.explosions = []
+        self.current_score = 0
+        self.game_time = 0.0
+        
+        # Réinitialiser les tours disponibles
+        self.available_towers = [
+            {'type': TowerType.POWERFUL, 'count': 1, 'color': BLUE},    # 1 tour puissante
+            {'type': TowerType.MEDIUM, 'count': 2, 'color': GREEN},     # 2 tours moyennes
+            {'type': TowerType.WEAK, 'count': 3, 'color': YELLOW}       # 3 tours faibles
+        ]
+        
+        # Réinitialiser la puissance de la lumière
+        self.light_power = LIGHT_MAX_POWER
+        self.light_active = False
+        self.light_position = None
+        self.light_in_cooldown = False
+        
+        # Arrêter les sons en cours
+        self.stop_voice()
+        self.stop_background_music()
+        
+        # Recentrer la caméra sur le village
+        self.camera_x = self.village_x
+        self.camera_y = self.village_y
+        self.zoom = 1.0
+
+    def handle_game_over(self):
+        """Gère la fin de partie et l'enregistrement des scores"""
+        # Vérifier si le score est un high score
+        waves_completed = self.wave_manager.current_wave if self.wave_manager else 0
+        
+        if self.score_manager.is_high_score(self.current_score):
+            # Afficher une boîte de dialogue pour entrer son nom
+            # Comme nous ne pouvons pas facilement créer des boîtes de dialogue dans Pygame,
+            # nous utiliserons un nom par défaut pour l'instant
+            self.score_manager.add_score(self.player_name, self.current_score, self.game_time, waves_completed)
+            self.show_leaderboard = True
+        else:
+            # Afficher le score final
+            self.show_leaderboard = True
+
+    def draw_ui(self):
+        """Dessine l'interface utilisateur"""
+        font = pygame.font.Font(None, 36)
+        
+        # Affichage du mode et de l'accélération
+        mode_text = "Mode: " + self.game_mode.name
+        text_surface = font.render(mode_text, True, WHITE)
+        self.screen.blit(text_surface, (10, 10))
+        
+        if self.time_accelerated:
+            speed_text = f"x{TIME_ACCELERATIONS[self.time_acceleration_index]}"
+            text_surface = font.render(speed_text, True, (255, 255, 0))
+            self.screen.blit(text_surface, (self.current_width - 60, 10))
+        
+        # Affichage du score et du temps en mode jeu
+        if self.game_mode == GameMode.PLAY:
+            minutes = int(self.game_time // 60)
+            seconds = int(self.game_time % 60)
+            time_str = f"Temps: {minutes:02d}:{seconds:02d}"
+            score_str = f"Score: {self.current_score}"
+            
+            if self.wave_manager is not None:
+                wave_str = f"Vague: {self.wave_manager.current_wave + 1}"  # +1 pour affichage plus intuitif
+            else:
+                wave_str = "Vague: --"
+                
+            time_surface = font.render(time_str, True, WHITE)
+            score_surface = font.render(score_str, True, WHITE)
+            wave_surface = font.render(wave_str, True, WHITE)
+            
+            self.screen.blit(time_surface, (10, 50))
+            self.screen.blit(score_surface, (10, 90))
+            self.screen.blit(wave_surface, (10, 130))
+        
+        # Affichage du leaderboard si nécessaire
+        if self.show_leaderboard:
+            self.draw_leaderboard()
+
+    def draw_leaderboard(self):
+        """Affiche le tableau des meilleurs scores"""
+        leaderboard_surface = pygame.Surface((self.current_width - 200, self.current_height - 200), pygame.SRCALPHA)
+        leaderboard_surface.fill((0, 0, 0, 220))  # Fond semi-transparent
+        
+        title_font = pygame.font.Font(None, 48)
+        font = pygame.font.Font(None, 36)
+        small_font = pygame.font.Font(None, 24)
+        
+        title_text = "Meilleurs Scores"
+        title_surface = title_font.render(title_text, True, (255, 255, 200))
+        title_rect = title_surface.get_rect(center=(leaderboard_surface.get_width() // 2, 40))
+        leaderboard_surface.blit(title_surface, title_rect)
+        
+        leaderboard = self.score_manager.get_leaderboard()
+        y_offset = 100
+        
+        # En-têtes
+        headers = ["Rang", "Joueur", "Score", "Temps", "Vagues"]
+        x_positions = [50, 120, 300, 400, 500]
+        
+        for i, entry in enumerate(leaderboard):
+            rank_surface = font.render(f"{i+1}", True, (220, 220, 220))
+            name_surface = font.render(entry["player_name"], True, (220, 220, 220))
+            score_surface = font.render(f"{entry['score']}", True, (220, 220, 220))
+            
+            time_str = self.score_manager.format_time(entry["survived_time"])
+            time_surface = font.render(time_str, True, (220, 220, 220))
+            
+            waves_surface = font.render(f"{entry['waves_completed']}", True, (220, 220, 220))
+            
+            # Mettre en évidence le score actuel
+            if self.game_over and entry["player_name"] == self.player_name and entry["score"] == self.current_score and entry["survived_time"] == self.game_time:
+                pygame.draw.rect(leaderboard_surface, (100, 100, 150, 100), 
+                               (30, y_offset - 5, leaderboard_surface.get_width() - 60, 40))
+            
+            leaderboard_surface.blit(rank_surface, (x_positions[0], y_offset))
+            leaderboard_surface.blit(name_surface, (x_positions[1], y_offset))
+            leaderboard_surface.blit(score_surface, (x_positions[2], y_offset))
+            leaderboard_surface.blit(time_surface, (x_positions[3], y_offset))
+            leaderboard_surface.blit(waves_surface, (x_positions[4], y_offset))
+            
+            y_offset += 40
+            
+            # Limiter l'affichage à 10 scores
+            if i >= 9:
+                break
+        
+        # Instructions pour fermer
+        instruction_text = "Appuyez sur ESPACE pour recommencer"
+        instruction_surface = small_font.render(instruction_text, True, (255, 200, 200))
+        instruction_rect = instruction_surface.get_rect(center=(leaderboard_surface.get_width() // 2, leaderboard_surface.get_height() - 40))
+        leaderboard_surface.blit(instruction_surface, instruction_rect)
+        
+        # Dessiner le panneau du leaderboard centré
+        leaderboard_rect = leaderboard_surface.get_rect(center=(self.current_width // 2, self.current_height // 2))
+        self.screen.blit(leaderboard_surface, leaderboard_rect)
+        
+        # Bordure
+        pygame.draw.rect(self.screen, (200, 200, 200), leaderboard_rect, 2)
 
 

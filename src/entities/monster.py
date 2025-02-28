@@ -8,7 +8,7 @@ from ..constants import (
     HEAL_RANGE, SPIRIT_BUFF_RANGE, KAMIKAZE_EXPLOSION_RANGE,
     TOWER_SIZE, VILLAGE_SIZE, MAX_VISIBILITY_RANGE,
     FLEE_DISTANCE_MIN, FLEE_DISTANCE_MAX, FLEE_ANGLE_VARIATION,
-    WORLD_SIZE
+    WORLD_SIZE, LIGHT_MAX_POWER
 )
 from ..enums import MonsterType, MONSTER_NAMES
 from .projectile import Projectile
@@ -227,44 +227,91 @@ class Monster:
 
     def start_fleeing(self, light_position):
         """Démarre la fuite du monstre"""
+        # Si le monstre a une cible, fuir dans la direction opposée
         if self.current_target:
             target_x = self.current_target.x if self.current_target_type == 'tower' else self.village_x
             target_y = self.current_target.y if self.current_target_type == 'tower' else self.village_y
             
+            # Calculer la direction de fuite (opposée à la cible)
             dx = self.x - target_x
             dy = self.y - target_y
-            distance = math.sqrt(dx*dx + dy*dy)
-            
-            self.flee_target_x = self.x + dx
-            self.flee_target_y = self.y + dy
-            
-            # Limiter la position cible dans les limites du monde
-            self.flee_target_x = max(0, min(self.flee_target_x, WORLD_SIZE))
-            self.flee_target_y = max(0, min(self.flee_target_y, WORLD_SIZE))
-            
-            fear_factor = self.MONSTER_STATS[self.monster_type]['light_fear'] / 100.0
-            self.flee_time = MAX_FLEE_TIME * fear_factor
-            
-            self.is_fleeing = True
-            self.current_target = None
-            self.current_target_type = None
+        else:
+            # Si pas de cible, fuir de la lumière directement
+            dx = self.x - light_position[0]
+            dy = self.y - light_position[1]
+        
+        # Normaliser le vecteur de fuite et l'amplifier pour une distance de fuite
+        distance = math.sqrt(dx*dx + dy*dy)
+        if distance > 0:  # Éviter division par zéro
+            # Normaliser puis multiplier par une distance de fuite aléatoire
+            flee_distance = random.uniform(FLEE_DISTANCE_MIN, FLEE_DISTANCE_MAX)
+            dx = dx / distance * flee_distance
+            dy = dy / distance * flee_distance
+        else:
+            # Si le monstre est exactement sur la cible/lumière, choisir une direction aléatoire
+            angle = random.uniform(0, 2 * math.pi)
+            flee_distance = random.uniform(FLEE_DISTANCE_MIN, FLEE_DISTANCE_MAX)
+            dx = math.cos(angle) * flee_distance
+            dy = math.sin(angle) * flee_distance
+        
+        # Définir la destination de fuite
+        self.flee_target_x = self.x + dx
+        self.flee_target_y = self.y + dy
+        
+        # Limiter la position cible dans les limites du monde
+        self.flee_target_x = max(0, min(self.flee_target_x, WORLD_SIZE))
+        self.flee_target_y = max(0, min(self.flee_target_y, WORLD_SIZE))
+        
+        # Calculer le temps de fuite basé sur la peur du monstre
+        fear_factor = self.MONSTER_STATS[self.monster_type]['light_fear'] / 100.0
+        self.flee_time = MAX_FLEE_TIME * fear_factor
+        
+        # Activer l'état de fuite
+        self.is_fleeing = True
+        self.current_target = None
+        self.current_target_type = None
 
     def update(self, towers, village_x, village_y, delta_time, light_position=None, light_active=False, light_power=0):
         """Met à jour l'état du monstre"""
+        self.village_x = village_x  # Stocker la position du village pour une utilisation ultérieure
+        self.village_y = village_y
+
+        # Si déjà en fuite, continuer à fuir
         if self.is_fleeing:
             self.update_fleeing(delta_time)
             return
 
-        # Gestion de la lumière
+        # Gestion de la lumière - si active et avec puissance
         if light_active and light_position and light_power > 0:
+            # Calculer la distance à la lumière
             dist_to_light = math.sqrt((light_position[0] - self.x)**2 + 
                                     (light_position[1] - self.y)**2)
-            if dist_to_light < LIGHT_RADIUS:
-                if random.random() * 100 < self.MONSTER_STATS[self.monster_type]['light_fear']:
+            
+            # Rayon d'effet de la lumière basé sur sa puissance
+            effective_radius = LIGHT_RADIUS  # Utiliser le rayon complet
+            
+            # Si le monstre est dans le rayon d'effet
+            if dist_to_light < effective_radius:
+                # L'intensité est plus forte au centre et dépend de la puissance de la lumière
+                # Calculée comme une valeur entre 0 et 1
+                light_intensity = (1.0 - dist_to_light / effective_radius) * (light_power / LIGHT_MAX_POWER)
+                
+                # La sensibilité du monstre à la lumière (une valeur entre 0 et 1)
+                light_sensitivity = self.light_fear / 100.0
+                
+                # Probabilité de fuite basée sur l'intensité et la sensibilité
+                # Plus l'intensité est forte et plus le monstre est sensible, plus la probabilité est élevée
+                flee_probability = light_intensity * light_sensitivity
+                
+                # Debug pour vérifier les valeurs
+                # print(f"Monstre: {MONSTER_NAMES[self.monster_type]}, Intensité: {light_intensity:.2f}, Sensibilité: {light_sensitivity:.2f}, Proba: {flee_probability:.2f}")
+                
+                # Décider si le monstre fuit, avec un minimum de probabilité pour les monstres sensibles
+                if flee_probability > 0.2 or (light_sensitivity > 0.5 and flee_probability > 0.1):
                     self.start_fleeing(light_position)
                     return
 
-        # Comportement normal
+        # Comportement normal si pas effrayé
         self.update_normal_behavior(towers, village_x, village_y, delta_time)
 
     def update_fleeing(self, delta_time):
