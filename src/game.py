@@ -84,6 +84,8 @@ class Game:
         self.light_power = LIGHT_MAX_POWER
         self.light_active = False
         self.light_position = None
+
+        self.background = pygame.image.load('src/assets/background.png').convert()
         
         # Charger la sauvegarde si elle existe
         self.load_map()
@@ -393,6 +395,8 @@ class Game:
     def draw(self):
         # Remplir l'écran en noir
         self.screen.fill(BLACK)
+
+        self.screen.blit(self.background, (0, 0))
         
         # Créer une surface noire pour les lumières (pas transparente)
         light_surface = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
