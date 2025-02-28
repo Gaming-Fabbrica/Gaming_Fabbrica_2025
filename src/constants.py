@@ -8,11 +8,11 @@ FPS = 60
 
 # Game Elements Sizes
 TOWER_PANEL_HEIGHT = 100  # Hauteur de la zone des tours en bas
-TOWER_SIZE = 40  # Taille des tours
-VILLAGE_SIZE = 60  # Taille du village (plus grand que TOWER_SIZE qui est 40)
+TOWER_SIZE = 80  # Taille des tours
+VILLAGE_SIZE = 120  # Taille du village (plus grand que TOWER_SIZE qui est 40)
 GO_BUTTON_WIDTH = 80
 GO_BUTTON_HEIGHT = 40
-MONSTER_SIZE = 20  # Taille des triangles des monstres
+MONSTER_SIZE = 40  # Taille des triangles des monstres
 
 # World Settings
 WORLD_SIZE = 3000  # Taille du monde en pixels
