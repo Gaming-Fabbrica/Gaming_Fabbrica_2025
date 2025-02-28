@@ -426,7 +426,7 @@ class Monster:
         
         # Dessiner le triangle du monstre
         points = self.calculate_triangle_points(screen_x, screen_y, zoom)
-        pygame.draw.polygon(screen, self.color, points)
+        pygame.draw.polygon(screen, (*self.color, 128), points, 2)
 
         screen.blit(pygame.transform.scale(self.game.monster_sprites[self.monster_type], (int(MONSTER_SIZE * zoom * self.size), int(MONSTER_SIZE * zoom * self.size))), (screen_x - MONSTER_SIZE*zoom * self.size/2, screen_y - MONSTER_SIZE*zoom * self.size/2))
         
