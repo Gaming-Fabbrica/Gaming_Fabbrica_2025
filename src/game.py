@@ -96,7 +96,7 @@ class Game:
         self.background = pygame.image.load('src/assets/background.png').convert()
 
         # Enemies images
-        self.enemy_moray = pygame.image.load('src/assets/moray.png').convert_alpha()
+        self.enemy_moray = pygame.image.load('src/assets/monsters/moray.png').convert_alpha()
         
         # Chargement et préparation de l'image de terrain
         try:
