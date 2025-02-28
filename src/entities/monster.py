@@ -314,7 +314,11 @@ class Monster:
         else:
             self.direction = self.target_direction
         
-        move_speed = self.speed * flee_multiplier * delta_time
+        # Récupération du multiplicateur de vitesse du terrain
+        terrain_multiplier = self.game.get_terrain_speed_multiplier(self.x, self.y)
+        
+        # Application du multiplicateur au mouvement
+        move_speed = self.speed * flee_multiplier * terrain_multiplier * delta_time
         self.x += math.cos(self.direction) * move_speed
         self.y += math.sin(self.direction) * move_speed
 

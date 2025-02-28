@@ -6,6 +6,10 @@ Un jeu de tower defense en 2D où vous devez protéger votre village contre des 
 
 - **Système de tours** : Placez stratégiquement des tours pour défendre votre village
 - **Gestion de la lumière** : Utilisez la lumière comme arme contre les monstres qui la craignent
+- **Terrain dynamique** : Une carte en niveaux de gris influence la vitesse des monstres
+  - Zones claires (255, 255, 255) : Vitesse normale
+  - Zones sombres (0, 0, 0) : Vitesse réduite
+  - Les différentes nuances de gris créent des variations de vitesse
 - **Différents types de monstres** :
   - Squelettes
   - Loups
@@ -17,6 +21,27 @@ Un jeu de tower defense en 2D où vous devez protéger votre village contre des 
   - Loups géants
   - Dragons
   - Et plus encore...
+
+## 🗺️ Système de terrain
+
+Le jeu utilise une image PNG en niveaux de gris comme carte de terrain :
+
+1. **Format de l'image** :
+   - PNG en niveaux de gris
+   - Dimensions recommandées : 1024x1024 pixels
+   - Nom par défaut : `terrain.png`
+
+2. **Influence sur le gameplay** :
+   - Blanc (255) : Vitesse normale des monstres (multiplicateur x1)
+   - Noir (0) : Vitesse très réduite (multiplicateur x0.5)
+   - Gris : Variation linéaire de la vitesse
+   - Exemple : Un gris à 128 donnera un multiplicateur de x0.75
+
+3. **Création de carte** :
+   - Utilisez un logiciel d'édition d'image (Photoshop, GIMP, etc.)
+   - Créez des chemins plus clairs pour les passages
+   - Ajoutez des zones sombres pour créer des ralentissements stratégiques
+   - Sauvegardez en PNG dans le dossier `assets/`
 
 ## 🛠️ Installation
 
@@ -48,7 +73,6 @@ python main.py
 2. Contrôles :
 - **Clic gauche** : Placer une tour
 - **Clic droit** : Activer la lumière
-- **ZQSD/WASD** : Déplacer la caméra
 - **Molette souris** : Zoom avant/arrière
 - **Échap** : Menu pause
 - **Espace** : Démarrer la partie

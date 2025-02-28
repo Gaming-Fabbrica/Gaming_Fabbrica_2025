@@ -87,6 +87,20 @@ class Game:
 
         self.background = pygame.image.load('src/assets/background.png').convert()
         
+        # Chargement et préparation de l'image de terrain
+        try:
+            self.terrain_image = pygame.image.load("assets/terrain.png").convert_gray()
+            # Mise à l'échelle si nécessaire pour correspondre à WORLD_SIZE
+            if self.terrain_image.get_width() != WORLD_SIZE or self.terrain_image.get_height() != WORLD_SIZE:
+                self.terrain_image = pygame.transform.scale(self.terrain_image, (WORLD_SIZE, WORLD_SIZE))
+        except FileNotFoundError:
+            print("Warning: terrain.png not found in assets folder. Using default terrain.")
+            self.terrain_image = pygame.Surface((WORLD_SIZE, WORLD_SIZE))
+            self.terrain_image.fill((255, 255, 255))  # Terrain blanc par défaut
+        
+        # Création d'un array numpy pour accès rapide aux pixels
+        self.terrain_array = pygame.surfarray.array2d(self.terrain_image)
+        
         # Charger la sauvegarde si elle existe
         self.load_map()
 
@@ -678,5 +692,32 @@ class Game:
         
         pygame.quit()
         sys.exit()
+
+    def get_terrain_speed_multiplier(self, x, y):
+        """Calcule le multiplicateur de vitesse basé sur la valeur du pixel du terrain.
+        
+        Args:
+            x (float): Position X dans le monde
+            y (float): Position Y dans le monde
+            
+        Returns:
+            float: Multiplicateur de vitesse entre 0.5 (noir) et 1.0 (blanc)
+        """
+        # Conversion des coordonnées monde en coordonnées image
+        terrain_x = int(x * self.terrain_image.get_width() / WORLD_SIZE)
+        terrain_y = int(y * self.terrain_image.get_height() / WORLD_SIZE)
+        
+        # Vérification des limites
+        terrain_x = max(0, min(terrain_x, self.terrain_image.get_width() - 1))
+        terrain_y = max(0, min(terrain_y, self.terrain_image.get_height() - 1))
+        
+        # Récupération de la valeur du pixel (0-255)
+        try:
+            pixel_value = self.terrain_array[terrain_x, terrain_y] & 0xFF
+        except IndexError:
+            return 1.0  # Valeur par défaut en cas d'erreur
+        
+        # Conversion en multiplicateur (0.5 pour noir, 1.0 pour blanc)
+        return 0.5 + (pixel_value / 255.0) * 0.5
 
 
