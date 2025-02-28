@@ -891,9 +891,9 @@ class Game:
                     color = (200, 200, 200)  # Gris clair pour les squelettes
                 elif monster_type == MonsterType.WOLF:
                     color = (100, 100, 150)  # Bleu-gris pour les loups
-                elif monster_type == MonsterType.EEL:
+                elif monster_type == MonsterType.MORAY:
                     color = (0, 100, 100)    # Cyan foncé pour les murènes
-                elif monster_type == MonsterType.GHOST:
+                elif monster_type == MonsterType.SMALL_SPIRIT:
                     color = (200, 200, 255)  # Bleu clair pour les fantômes
                 elif monster_type == MonsterType.FIRE_SKELETON:
                     color = (255, 100, 0)    # Orange pour les squelettes de feu
