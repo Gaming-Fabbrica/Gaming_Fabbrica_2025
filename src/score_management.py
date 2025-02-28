@@ -173,6 +173,7 @@ class ScoreManager:
             MonsterType.SKELETON: 10,
             MonsterType.WOLF: 15,
             MonsterType.MORAY: 20,
+            MonsterType.VARAN: 25,
             MonsterType.SMALL_SPIRIT: 25,
             MonsterType.FIRE_SKELETON: 30,
             MonsterType.WITCH: 40,

@@ -54,6 +54,16 @@ class Monster:
             'attack_range': 100,  # Distance de tir
             'projectile_speed': 300,
         },
+        MonsterType.VARAN: {
+            'max_health': 250,
+            'max_damage': 25,
+            'speed': 2,
+            'shield': 10,
+            'attack_speed': 1.5,
+            'light_fear': 50,
+            'color': (0, 100, 0),  # Vert foncé
+            'group_factor': 50,  # Groupes moyens
+        },
         MonsterType.SMALL_SPIRIT: {
             'max_health': 80,
             'max_damage': 30,
