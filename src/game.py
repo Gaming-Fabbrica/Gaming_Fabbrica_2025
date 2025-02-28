@@ -95,9 +95,8 @@ class Game:
 
         self.background = pygame.image.load('src/assets/background.png').convert()
 
-        # Enemies images
-        self.enemy_moray = pygame.image.load('src/assets/moray.png').convert_alpha()
-        
+        self.tower = pygame.image.load('src/assets/tower.png').convert_alpha()
+
         # Chargement et préparation de l'image de terrain
         try:
             self.speed_mask = pygame.image.load("src/assets/speedmask.png").convert()
@@ -492,6 +491,8 @@ class Game:
                              (int(screen_x), int(screen_y)), 
                              int(TOWER_SIZE/2 * self.zoom))
             
+            self.screen.blit(pygame.transform.scale(self.tower, (int(TOWER_SIZE * self.zoom), int(TOWER_SIZE * self.zoom))), (screen_x - TOWER_SIZE/2*self.zoom, screen_y - TOWER_SIZE/2*self.zoom))
+            
             health_ratio = tower.current_health / tower.max_health
             health_width = TOWER_SIZE * self.zoom
             health_height = 5 * self.zoom
@@ -558,6 +559,8 @@ class Game:
                         int(10 * self.zoom),
                         2
                     )
+
+                    self.screen.blit(monster.sprite, (monster_screen_x, monster_screen_y))
                     
                     self.screen.blit(debug_surface, (0, 0))
                 
@@ -891,9 +894,9 @@ class Game:
                     color = (200, 200, 200)  # Gris clair pour les squelettes
                 elif monster_type == MonsterType.WOLF:
                     color = (100, 100, 150)  # Bleu-gris pour les loups
-                elif monster_type == MonsterType.EEL:
+                elif monster_type == MonsterType.MORAY:
                     color = (0, 100, 100)    # Cyan foncé pour les murènes
-                elif monster_type == MonsterType.GHOST:
+                elif monster_type == MonsterType.SMALL_SPIRIT:
                     color = (200, 200, 255)  # Bleu clair pour les fantômes
                 elif monster_type == MonsterType.FIRE_SKELETON:
                     color = (255, 100, 0)    # Orange pour les squelettes de feu
