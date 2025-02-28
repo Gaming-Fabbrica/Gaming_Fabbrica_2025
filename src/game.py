@@ -30,6 +30,12 @@ class Game:
         pygame.display.set_caption("Tower Defense")
         self.clock = pygame.time.Clock()
         
+        # Initialisation du système audio
+        pygame.mixer.init()
+        
+        # Chargement des sons
+        self.load_sounds()
+        
         self.game_mode = GameMode.EDIT
         self.towers = []
         
@@ -822,5 +828,34 @@ class Game:
         
         # Conversion en multiplicateur (0.5 pour noir, 1.0 pour blanc)
         return 0.5 + (pixel_value / 255.0) * 0.5
+
+    def load_sounds(self):
+        """Charge tous les effets sonores du jeu"""
+        self.sounds = {
+            'tower_fire': self.load_sound('tower_fire.wav'),
+            'monster_death': self.load_sound('monster_death.wav'),
+            'tower_destroyed': self.load_sound('tower_destroyed.wav'),
+            'light_effect': self.load_sound('light_effect.wav')
+        }
+        
+        # Volume des effets sonores (entre 0.0 et 1.0)
+        self.sound_volume = 0.5
+        self.sound_enabled = True
+
+    def load_sound(self, filename):
+        """Charge un fichier son avec gestion d'erreur"""
+        try:
+            sound_path = os.path.join('src', 'assets', 'sounds', filename)
+            sound = pygame.mixer.Sound(sound_path)
+            return sound
+        except:
+            print(f"Impossible de charger le son: {filename}")
+            return None
+
+    def play_sound(self, sound_name):
+        """Joue un son s'il est disponible et que le son est activé"""
+        if self.sound_enabled and sound_name in self.sounds and self.sounds[sound_name]:
+            self.sounds[sound_name].set_volume(self.sound_volume)
+            self.sounds[sound_name].play()
 
 
