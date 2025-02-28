@@ -147,7 +147,7 @@ class Game:
     def start_game(self):
         """Démarre le mode jeu"""
         self.game_mode = GameMode.PLAY
-        self.wave_manager = WaveManager(self.village_x, self.village_y)
+        self.wave_manager = WaveManager(self.village_x, self.village_y, self)
         self.game_start_time = time.time()
         self.monsters = []
         

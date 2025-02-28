@@ -15,9 +15,10 @@ class Wave:
     wave_delay: float     # Délai avant la prochaine vague en secondes
 
 class WaveManager:
-    def __init__(self, village_x, village_y):
+    def __init__(self, village_x, village_y, game):
         self.village_x = village_x
         self.village_y = village_y
+        self.game = game  # Référence au jeu
         self.current_wave = 0
         self.wave_started = False
         self.last_spawn_time = 0
@@ -109,7 +110,7 @@ class WaveManager:
                 self.current_wave += 1
                 self.next_wave_time = current_time + self.waves[self.current_wave-1].wave_delay
                 
-            return Monster(monster_type, x, y, initial_direction=angle)
+            return Monster(monster_type, x, y, self.game)
             
         return None
 
@@ -126,3 +127,7 @@ class WaveManager:
                     wave_monster.spawn_delay,
                     group_factor
                 )) 
+
+    def generate_monster(self, monster_type, x, y):
+        """Crée un nouveau monstre"""
+        return Monster(monster_type, x, y, self.game)  # Passer la référence au jeu 

@@ -138,10 +138,11 @@ class Monster:
         }
     }
 
-    def __init__(self, monster_type, x, y, initial_direction=0):
+    def __init__(self, monster_type, x, y, game, initial_direction=0):
         self.monster_type = monster_type
         self.x = x
         self.y = y
+        self.game = game  # Référence au jeu pour accéder au terrain
         
         # Récupérer les stats de base pour ce type de monstre
         stats = self.MONSTER_STATS[monster_type]
