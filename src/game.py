@@ -90,17 +90,17 @@ class Game:
         
         # Chargement et préparation de l'image de terrain
         try:
-            self.terrain_image = pygame.image.load("assets/speedmask.png").convert_gray()
+            self.speed_mask = pygame.image.load("assets/speedmask.png").convert_gray()
             # Mise à l'échelle si nécessaire pour correspondre à WORLD_SIZE
-            if self.terrain_image.get_width() != WORLD_SIZE or self.terrain_image.get_height() != WORLD_SIZE:
-                self.terrain_image = pygame.transform.scale(self.terrain_image, (WORLD_SIZE, WORLD_SIZE))
+            if self.speed_mask.get_width() != WORLD_SIZE or self.speed_mask.get_height() != WORLD_SIZE:
+                self.speed_mask = pygame.transform.scale(self.speed_mask, (WORLD_SIZE, WORLD_SIZE))
         except FileNotFoundError:
-            print("Warning: terrain.png not found in assets folder. Using default terrain.")
-            self.terrain_image = pygame.Surface((WORLD_SIZE, WORLD_SIZE))
-            self.terrain_image.fill((255, 255, 255))  # Terrain blanc par défaut
+            print("Warning: speedmask.png not found in assets folder. Using default speedmask.")
+            self.speed_mask = pygame.Surface((WORLD_SIZE, WORLD_SIZE))
+            self.speed_mask.fill((255, 255, 255))  # Terrain blanc par défaut
         
         # Création d'un array numpy pour accès rapide aux pixels
-        self.terrain_array = pygame.surfarray.array2d(self.terrain_image)
+        self.terrain_array = pygame.surfarray.array2d(self.speed_mask)
         
         # Charger la sauvegarde si elle existe
         self.load_map()
@@ -739,12 +739,12 @@ class Game:
             float: Multiplicateur de vitesse entre 0.5 (noir) et 1.0 (blanc)
         """
         # Conversion des coordonnées monde en coordonnées image
-        terrain_x = int(x * self.terrain_image.get_width() / WORLD_SIZE)
-        terrain_y = int(y * self.terrain_image.get_height() / WORLD_SIZE)
+        terrain_x = int(x * self.speed_mask.get_width() / WORLD_SIZE)
+        terrain_y = int(y * self.speed_mask.get_height() / WORLD_SIZE)
         
         # Vérification des limites
-        terrain_x = max(0, min(terrain_x, self.terrain_image.get_width() - 1))
-        terrain_y = max(0, min(terrain_y, self.terrain_image.get_height() - 1))
+        terrain_x = max(0, min(terrain_x, self.speed_mask.get_width() - 1))
+        terrain_y = max(0, min(terrain_y, self.speed_mask.get_height() - 1))
         
         # Récupération de la valeur du pixel (0-255)
         try:
