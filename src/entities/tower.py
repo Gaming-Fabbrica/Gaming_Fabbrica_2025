@@ -89,6 +89,7 @@ class Tower:
             self.attack_cooldown -= delta_time
             return
 
+        has_fired = False  # Variable temporaire pour suivre si un tir a eu lieu
         for monster in monsters:
             dist = math.sqrt((monster.x - self.x)**2 + (monster.y - self.y)**2)
             if dist <= self.attack_range:
@@ -97,8 +98,12 @@ class Tower:
                 self.projectiles.append(
                     Projectile(self.x, self.y, monster, self.damage, color)
                 )
-                self.is_firing = True  # La tour est en train de tirer
-        if monsters:
+                has_fired = True  # La tour a tiré pendant ce cycle
+        
+        if has_fired:
+            self.is_firing = True  # Mettre à jour l'attribut après la boucle
+            self.attack_cooldown = 1 / self.attack_speed
+        elif monsters:
             self.attack_cooldown = 1 / self.attack_speed
 
     def update_projectiles(self, delta_time):

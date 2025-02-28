@@ -37,7 +37,7 @@ class Game:
         self.sound_volume = 0.5
         self.sound_enabled = True
         self.music_enabled = True
-        self.music_volume = 0.3  # Volume plus bas que les effets sonores
+        self.music_volume = 0.1  # Volume plus bas que les effets sonores
         self.voices_enabled = True  # Option pour activer/désactiver les voix
         
         # Chargement des sons
@@ -901,7 +901,7 @@ class Game:
                 print(f"Dossier créé: {directory}")
         
         self.sounds = {
-            'tower_fire': self.load_sound('tower_fire.wav'),
+            'tower_fire': self.load_sound('tower_attack.wav'),
             'monster_death': self.load_sound('monster_death.wav'),
             'tower_destroyed': self.load_sound('tower_destroyed.wav'),
             'light_on': self.load_sound('light_on.wav'),
