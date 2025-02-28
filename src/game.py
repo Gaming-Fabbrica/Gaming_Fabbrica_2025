@@ -119,6 +119,9 @@ class Game:
         self.tower_sprites[TowerType.MEDIUM] = pygame.image.load('src/assets/tower_medium.png').convert_alpha()
         self.tower_sprites[TowerType.POWERFUL] = pygame.image.load('src/assets/tower_powerful.png').convert_alpha()
 
+        # Village
+        self.village_sprite = pygame.image.load('src/assets/village.png').convert_alpha()
+
         # Chargement et préparation de l'image de terrain
         try:
             self.speed_mask = pygame.image.load("src/assets/speedmask.png").convert()
@@ -557,7 +560,13 @@ class Game:
         # Dessiner le village
         village_screen_x, village_screen_y = self.world_to_screen(self.village_x, self.village_y)
         village_radius = int(VILLAGE_SIZE/2 * self.zoom)
-        pygame.draw.circle(self.screen, RED, (int(village_screen_x), int(village_screen_y)), village_radius)
+        # pygame.draw.circle(self.screen, RED, (int(village_screen_x), int(village_screen_y)), village_radius)
+
+        # Dessiner le village (image)
+        self.screen.blit(
+            pygame.transform.scale(self.village_sprite, (int(VILLAGE_SIZE * self.zoom), int(VILLAGE_SIZE * self.zoom))),
+            (village_screen_x - VILLAGE_SIZE/2*self.zoom, village_screen_y - VILLAGE_SIZE/2*self.zoom)
+        )
         
         # Dessiner les tours
         for tower in self.towers:
