@@ -356,6 +356,9 @@ class Game:
                         self.stop_background_music()
                 elif event.key == pygame.K_v:  # Touche V pour couper/activer les voix
                     self.voices_enabled = not self.voices_enabled
+                    if not self.voices_enabled:
+                        # Arrêter toutes les voix en cours si on désactive l'option
+                        self.stop_voice()
         
         # Déplacement de la carte par drag (disponible dans tous les modes)
         if self.dragging_map and self.last_mouse_pos:
