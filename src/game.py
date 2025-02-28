@@ -534,9 +534,9 @@ class Game:
                                  (int(screen_x), int(screen_y)), attack_radius)
                 self.screen.blit(range_surface, (0, 0))
             
-            pygame.draw.circle(self.screen, color, 
-                             (int(screen_x), int(screen_y)), 
-                             int(TOWER_SIZE/2 * self.zoom))
+            # pygame.draw.circle(self.screen, color, 
+            #                  (int(screen_x), int(screen_y)), 
+            #                  int(TOWER_SIZE/2 * self.zoom))
             
             self.screen.blit(pygame.transform.scale(self.tower_sprites[tower.tower_type], (int(TOWER_SIZE * self.zoom), int(TOWER_SIZE * self.zoom))), (screen_x - TOWER_SIZE/2*self.zoom, screen_y - TOWER_SIZE/2*self.zoom))
             
